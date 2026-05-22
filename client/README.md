@@ -194,7 +194,7 @@ MYOB_API_BASE=https://api.myob.com/accountright
 MYOB_SCOPES=la.global
 
 # Frontend URL (for redirects)
-FRONTEND_URL=http://localhost:5173
+FRONTEND_URL=http://localhost:1152
 ```
 
 ---
@@ -245,7 +245,7 @@ npm run start
 ```bash
 npm run dev
 ```
-> Runs on `http://localhost:5173`
+> Runs on `http://localhost:1152`
 
 ---
 

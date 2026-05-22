@@ -36,7 +36,7 @@ const NEW_SCOPES = [
 const env = {
   PORT:           process.env.PORT || 3001,
   SESSION_SECRET: process.env.SESSION_SECRET || "myob-secret-change-this",
-  FRONTEND_URL:   process.env.FRONTEND_URL || "http://localhost:5173",
+  FRONTEND_URL:   process.env.FRONTEND_URL || "http://localhost:1152",
 
   MYOB_CLIENT_ID:     process.env.MYOB_CLIENT_ID,
   MYOB_CLIENT_SECRET: process.env.MYOB_CLIENT_SECRET,
