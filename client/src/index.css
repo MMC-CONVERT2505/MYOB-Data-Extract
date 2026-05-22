@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    background-color: #0d0f14;
+    color: #e8eaf0;
+    font-family: 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: #13161e; }
+  ::-webkit-scrollbar-thumb { background: #252a38; border-radius: 3px; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 bg-accent text-white font-medium text-sm rounded-[6px] cursor-pointer border-0 transition-all duration-150 hover:bg-accent-hover hover:-translate-y-px;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 bg-transparent text-muted text-sm font-medium rounded-[6px] cursor-pointer border border-border transition-all duration-150 hover:bg-bg-3 hover:text-white;
+  }
+  .card {
+    @apply bg-bg-2 border border-border rounded-[10px] p-6;
+  }
+  .badge-green  { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-400/10 text-success; }
+  .badge-red    { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-400/10 text-danger; }
+  .badge-yellow { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-400/10 text-warning; }
+  .badge-blue   { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-400/10 text-accent; }
+  .input-field {
+    @apply bg-bg-3 border border-border rounded-[6px] text-white text-sm px-3.5 py-2.5 outline-none transition-colors duration-150 placeholder:text-muted-2 focus:border-accent;
+  }
+  .th-cell {
+    @apply px-4 py-3 text-left text-xs font-medium text-muted-2 uppercase tracking-wider border-b border-border;
+  }
+  .td-cell {
+    @apply px-4 py-3.5 text-sm text-muted border-b border-border;
+  }
+  tr:hover .td-cell {
+    @apply bg-bg-3 text-white;
+  }
+  tr:last-child .td-cell {
+    @apply border-b-0;
+  }
+}
