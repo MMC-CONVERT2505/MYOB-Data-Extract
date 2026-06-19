@@ -87,7 +87,7 @@ export const flattenMYOBItems = (items) =>
     // ───── PURCHASE ─────
 
     "PURCHASE ACCOUNT":
-      i.ExpenseAccount?.DisplayID,
+      i.ExpenseAccount?.DisplayID || i.CostOfSalesAccount?.DisplayID,
 
     "PURCHASE DESCRIPTION":
       safe(
@@ -105,10 +105,6 @@ export const flattenMYOBItems = (items) =>
         i.BuyingDetails?.TaxCode?.Code
       ),
     
-    "Amounts include tax":
-      i.SellingDetails?.IsTaxInclusive
-        ? "Yes"
-        : "No",
   }));
 
 // ── 2. Customers (/Contact/Customer) ─────────────────────────

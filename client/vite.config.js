@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+base: "/myob-app/",
   server: {
     port: 1152,
     proxy: {

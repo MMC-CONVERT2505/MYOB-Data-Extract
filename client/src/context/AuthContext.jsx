@@ -27,13 +27,13 @@ export function AuthProvider({ children }) {
   };
 
   const login = () => {
-    window.location.href = "/auth/login";
+   window.location.href = "/myob-api/auth/login";
   };
 
   const logout = async () => {
     await axios.get("/auth/logout", { withCredentials: true });
     setAuth({ loading: false, authenticated: false, businessName: null });
-    window.location.href = "/";
+    window.location.href = "/myob-app/";
   };
 
   return (

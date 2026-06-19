@@ -32,7 +32,7 @@ function PrivateRoute({ children }) {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+     <BrowserRouter basename="/myob-app">
         <Routes>
           <Route path="/"           element={<LoginPage />} />
           <Route path="/auth/error" element={<AuthError />} />

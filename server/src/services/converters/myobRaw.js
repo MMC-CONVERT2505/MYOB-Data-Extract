@@ -6,6 +6,7 @@ import { cleanNone, fmtDate } from "../helpers.js";
 export const flattenMYOBInvoiceService = (invoices, businessName) => {
   const rows = [];
 
+
   for (const inv of invoices) {
 
     const lines = inv.Lines?.length
@@ -18,9 +19,13 @@ export const flattenMYOBInvoiceService = (invoices, businessName) => {
       "";
 
     // ✅ valid lines only
-    const validLines = lines.filter(
-      l => (l.Total ?? l.Amount ?? "") !== ""
-    );
+    const validLines = lines.filter(l => {
+      const amount = Number(
+        l.Total ?? l.Amount ?? 0
+      );
+
+      return amount !== 0;
+    });
 
     // ✅ total line amount
     const totalLineAmount = validLines.reduce((sum, l) => {
@@ -28,6 +33,28 @@ export const flattenMYOBInvoiceService = (invoices, businessName) => {
         l.Total ?? l.Amount ?? 0
       );
     }, 0);
+
+    const taxableLines = validLines.filter(l => {
+      const taxCode =
+        l.TaxCode?.Code || "";
+
+      return ![
+        "N-T",
+        "FRE",
+        "NONE"
+      ].includes(taxCode);
+    });
+
+    const taxableAmount =
+      taxableLines.reduce(
+        (sum, l) =>
+          sum + Number(
+            l.Total ?? l.Amount ?? 0
+          ),
+        0
+      );
+
+    let distributedTax = 0;
 
     for (const line of lines) {
 
@@ -47,11 +74,11 @@ export const flattenMYOBInvoiceService = (invoices, businessName) => {
       const quantity = isService
         ? 1
         : (
-            line.Quantity ??
-            line.UnitCount ??
-            line.ShipQuantity ??
-            1
-          );
+          line.Quantity ??
+          line.UnitCount ??
+          line.ShipQuantity ??
+          1
+        );
 
       // ✅ unit amount
       const unitAmount = isService
@@ -94,14 +121,6 @@ export const flattenMYOBInvoiceService = (invoices, businessName) => {
         taxAmount = 0;
       }
 
-      // ✅ item name
-      const itemName =
-        [
-          line.Item?.Number,
-          line.Item?.Name
-        ]
-          .filter(Boolean)
-          .join(" ");
 
       rows.push({
 
@@ -139,10 +158,6 @@ export const flattenMYOBInvoiceService = (invoices, businessName) => {
           line.Category?.Name ||
           "",
 
-        // ✅ product/service
-        "Item":
-          itemName,
-
         // ✅ fixed item price
         "Item price":
           unitAmount,
@@ -152,6 +167,13 @@ export const flattenMYOBInvoiceService = (invoices, businessName) => {
 
         "Account Name":
           line.Account?.Name || "",
+
+        // ✅ MOVE HERE FOR TESTING
+        "Item Name":
+          line.Item?.Name || "",
+
+        "Item Code":
+          line.Item?.Number || "",
 
         "Description":
           line.Description || "",
@@ -166,7 +188,6 @@ export const flattenMYOBInvoiceService = (invoices, businessName) => {
         "Tax code":
           taxCode,
 
-        // ✅ fixed tax amount
         "Tax Amount":
           Number(
             taxAmount
@@ -184,8 +205,21 @@ export const flattenMYOBInvoiceService = (invoices, businessName) => {
         "PAYMENT DETAILS":
           inv.OnlinePaymentMethod || "",
 
+        "Freight Amount":
+          inv.Freight ??
+          inv.FreightAmount ??
+          "",
+
+        "Freight Tax Code":
+          inv.FreightTaxCode?.Code ||
+          "",
+
+        "Freight Tax Amount":
+          inv.FreightTaxAmount ??
+          "",
+
         "UID":
-        inv.UID
+          inv.UID
       });
     }
   }
@@ -193,111 +227,213 @@ export const flattenMYOBInvoiceService = (invoices, businessName) => {
   return rows;
 };
 
-// ── MYOB Bill Raw — Item/Service/Prof/Misc (same columns) ─────
 
 export const flattenMYOBBillRaw = (bills, businessName) => {
+
   const rows = [];
+
+
 
   for (const bill of bills) {
 
-    const lines = bill.Lines?.length
-      ? bill.Lines
-      : [{}];
+    const lines =
+      bill.Lines?.length
+        ? bill.Lines
+        : [{}];
 
-    const orgName =
-      businessName ||
-      bill.CompanyFile?.Name ||
-      "";
+    const noTaxCodes = [
+      "N-T",
+      "FRE",
+      "NONE"
+    ];
 
-    // ✅ valid lines only
-    const validLines = lines.filter(
-      l => (l.Total ?? l.Amount ?? "") !== ""
-    );
+    // Taxable lines only
+    const taxableLines = lines.filter(l => {
+      const taxCode = l.TaxCode?.Code || "";
 
-    // ✅ total line amount
-    const totalLineAmount = validLines.reduce((sum, l) => {
-      return sum + Number(
+      const amount = Number(
         l.Total ?? l.Amount ?? 0
       );
-    }, 0);
 
-    for (const line of lines) {
+      return (
+        amount !== 0 &&
+        !noTaxCodes.includes(taxCode)
+      );
+    });
 
-      const lineAmount = Number(
-        line.Total ?? line.Amount ?? 0
+    const taxableAmount =
+      taxableLines.reduce(
+        (sum, l) =>
+          sum +
+          Number(
+            l.Total ??
+            l.Amount ??
+            0
+          ),
+        0
       );
 
-      // ❌ skip empty rows
+    let distributedTax = 0;
+
+    for (let index = 0; index < lines.length; index++) {
+
+      const line = lines[index];
+
+      const lineAmount = Number(
+        line.Total ??
+        line.Amount ??
+        0
+      );
+
       if (!lineAmount) continue;
 
-      // ✅ service detection
+      const taxCode =
+        line.TaxCode?.Code || "";
+
       const isService =
         !line.Item?.Number &&
         !line.Item?.Name;
 
-      // ✅ quantity
-      const quantity = isService
-        ? 1
-        : (
+      const quantity =
+        isService
+          ? 1
+          : (
             line.Quantity ??
             line.UnitCount ??
             line.BillCount ??
             1
           );
 
-      // ✅ unit amount
-      const unitAmount = isService
-        ? lineAmount
-        : Number(line.UnitPrice ?? 0);
+      const unitAmount =
+        isService
+          ? lineAmount
+          : Number(
+            line.UnitPrice ?? 0
+          );
 
-      // ✅ tax code
-      const taxCode =
-        line.TaxCode?.Code || "";
-
-      // ✅ no-tax codes
-      const noTaxCodes = [
-        "N-T",
-        "FRE",
-        "NONE"
-      ];
-
-      // ✅ tax amount fix
       let taxAmount = 0;
 
-      if (
-        line.TaxAmount !== undefined &&
-        line.TaxAmount !== null
-      ) {
-        taxAmount = Number(line.TaxAmount);
+      // =================================================
+      // TAX EXCLUSIVE
+      // =================================================
+      if (!bill.IsTaxInclusive) {
 
-      } else if (
-        bill.TotalTax &&
-        totalLineAmount > 0
-      ) {
-        taxAmount =
-          (lineAmount / totalLineAmount) *
-          Number(bill.TotalTax);
+        if (
+          !noTaxCodes.includes(
+            taxCode
+          )
+        ) {
+
+          if (
+            line.TaxAmount !== undefined &&
+            line.TaxAmount !== null
+          ) {
+
+            taxAmount =
+              Number(
+                line.TaxAmount
+              );
+
+          } else {
+
+            taxAmount =
+              Number(
+                (
+                  lineAmount * 0.10
+                ).toFixed(2)
+              );
+          }
+        }
       }
 
-      // ✅ no tax
-      if (
-        noTaxCodes.includes(taxCode)
-      ) {
-        taxAmount = 0;
+      // =================================================
+      // TAX INCLUSIVE
+      // =================================================
+      else {
+
+        if (
+          !noTaxCodes.includes(
+            taxCode
+          )
+        ) {
+
+          if (
+            line.TaxAmount !== undefined &&
+            line.TaxAmount !== null
+          ) {
+
+            taxAmount =
+              Number(
+                line.TaxAmount
+              );
+
+          } else if (
+            bill.TotalTax &&
+            taxableAmount > 0
+          ) {
+
+            const taxableIndexes =
+              lines
+                .map((l, i) => ({
+                  line: l,
+                  index: i
+                }))
+                .filter(
+                  x =>
+                    !noTaxCodes.includes(
+                      x.line.TaxCode?.Code || ""
+                    ) &&
+                    Number(
+                      x.line.Total ??
+                      x.line.Amount ??
+                      0
+                    ) !== 0
+                )
+
+            const isLastTaxableLine =
+              index ===
+              taxableIndexes[
+                taxableIndexes.length - 1
+              ]?.index;
+
+            if (
+              isLastTaxableLine
+            ) {
+
+              taxAmount =
+                Number(
+                  (
+                    Number(
+                      bill.TotalTax
+                    ) -
+                    distributedTax
+                  ).toFixed(2)
+                );
+
+            } else {
+
+              taxAmount =
+                Number(
+                  (
+                    (
+                      lineAmount /
+                      taxableAmount
+                    ) *
+                    Number(
+                      bill.TotalTax
+                    )
+                  ).toFixed(2)
+                );
+
+              distributedTax +=
+                taxAmount;
+            }
+          }
+        }
       }
 
-      // ✅ item name
-      const itemName =
-        [
-          line.Item?.Number,
-          line.Item?.Name
-        ]
-          .filter(Boolean)
-          .join(" ");
 
       rows.push({
-
-        // ───── TEMPLATE FIELDS ─────
 
         "Supplier":
           cleanNone(
@@ -306,7 +442,9 @@ export const flattenMYOBBillRaw = (bills, businessName) => {
           ),
 
         "Bill date":
-          fmtDate(bill.Date),
+          fmtDate(
+            bill.Date
+          ),
 
         "Due Date":
           fmtDate(
@@ -314,8 +452,7 @@ export const flattenMYOBBillRaw = (bills, businessName) => {
           ),
 
         "Reference code":
-          bill.Number ||
-          "",
+          bill.Number || "",
 
         "Amounts*":
           bill.IsTaxInclusive
@@ -330,11 +467,11 @@ export const flattenMYOBBillRaw = (bills, businessName) => {
           bill.Category?.Name ||
           "",
 
-        // ✅ product/service
-        "Item":
-          itemName,
+        "Item Name":
+          line.Item?.Name || "",
 
-        // ✅ fixed item price
+        "Item Code":
+          line.Item?.Number || "",
         "Item price":
           unitAmount,
 
@@ -347,7 +484,6 @@ export const flattenMYOBBillRaw = (bills, businessName) => {
         "Description":
           line.Description || "",
 
-        // ✅ fixed qty
         "Qty":
           quantity,
 
@@ -357,20 +493,30 @@ export const flattenMYOBBillRaw = (bills, businessName) => {
         "Tax code":
           taxCode,
 
-        // ✅ fixed tax amount
         "Tax Amount":
-          Number(
-            taxAmount.toFixed(2)
-          ),
+          taxAmount,
 
         "Amount":
           lineAmount,
 
         "NOTES":
           bill.Comment || "",
-        
+
+        "Freight Amount":
+          bill.Freight ??
+          bill.FreightAmount ??
+          "",
+
+        "Freight Tax Code":
+          bill.FreightTaxCode?.Code ||
+          "",
+
+        "Freight Tax Amount":
+          bill.FreightTaxAmount ??
+          "",
+
         "UID":
-        bill.UID
+          bill.UID
       });
     }
   }
@@ -510,52 +656,9 @@ export const flattenMYOBBillPayment = (payments) => {
   return rows;
 };
 
-// ── MYOB Spend Money — QBO Excel Template style ───────────────
-// Template columns:
-// Ref No | Account | Payee | Payment Date | Global Tax Calculation |
-// Expense Account | Expense Description | Expense Line Amount |
-// Expense Tax Code | Expense Account Tax Amount | Currency Code | Exchange Rate
-
-// export const flattenMYOBSpendMoneyQBO = (items) => {
-//   const rows = [];
-
-//   for (const txn of items) {
-//     const lines = txn.Lines?.length ? txn.Lines : [{}];
-
-//     for (const line of lines) {
-//       const lineAmount     = line.Amount ?? 0;
-//       const lineTaxAmt     = line.TaxAmount ?? 0;
-//       const taxExclAmount  = txn.IsTaxInclusive
-//         ? Number(lineAmount) - Number(lineTaxAmt)
-//         : lineAmount;
-
-//       rows.push({
-//         "Ref No":                    txn.PaymentNumber || "",
-//         "Account":                   txn.Account?.DisplayID || "",
-//         "Payee":                     cleanNone(
-//                                        txn.Contact?.Name ||
-//                                        txn.Contact?.CompanyName ||
-//                                        txn.Contact?.DisplayID
-//                                      ),
-//         "Payment Date":              fmtDate(txn.Date),
-//         "Global Tax Calculation":    txn.IsTaxInclusive ? "Tax Inclusive" : "Tax Exclusive",
-//         "Expense Account":           line.Account?.DisplayID
-//                                        ? `${line.Account.DisplayID} ${line.Account.Name || ""}`.trim()
-//                                        : "",
-//         "Expense Description":       line.Memo || txn.Memo || "",
-//         "Expense Line Amount":       line.Amount ?? "",
-//         "Expense Tax Code":          line.TaxCode?.Code || "",
-//         "Expense Account Tax Amount": taxExclAmount !== 0 ? taxExclAmount : "",
-//         "Currency Code":             txn.ForeignCurrency?.Code || "AUD",
-//         "Exchange Rate":             txn.CurrencyExchangeRate ?? 1,
-//       });
-//     }
-//   }
-
-//   return rows;
-// };
 
 export const flattenMYOBSpendMoneyQBO = (items) => {
+
   const rows = [];
 
   for (const txn of items) {
@@ -566,24 +669,40 @@ export const flattenMYOBSpendMoneyQBO = (items) => {
 
     // ✅ valid lines only
     const validLines = lines.filter(
-      l => (l.Amount ?? l.Total ?? "") !== ""
+      l =>
+        l.Amount !== undefined ||
+        l.Total !== undefined
     );
 
     // ✅ total line amount
     const totalLineAmount = validLines.reduce((sum, l) => {
+
       return sum + Number(
-        l.Amount ?? l.Total ?? 0
+        l.Amount ??
+        l.Total ??
+        0
       );
+
     }, 0);
 
     for (const line of lines) {
 
+      // ✅ FIXED amount logic
       const lineAmount = Number(
-        line.Amount ?? line.Total ?? 0
+        line.Amount ??
+        line.Total ??
+        txn.AmountPaid ??
+        0
       );
 
-      // ❌ skip empty rows
-      if (!lineAmount) continue;
+      // ❌ skip only invalid rows
+      if (
+        lineAmount === null ||
+        lineAmount === undefined ||
+        Number.isNaN(lineAmount)
+      ) {
+        continue;
+      }
 
       // ✅ tax calculation
       let lineTaxAmt = 0;
@@ -592,15 +711,19 @@ export const flattenMYOBSpendMoneyQBO = (items) => {
         line.TaxAmount !== undefined &&
         line.TaxAmount !== null
       ) {
-        lineTaxAmt = Number(line.TaxAmount);
+
+        lineTaxAmt = Number(
+          line.TaxAmount
+        );
 
       } else if (
         txn.TotalTax &&
         totalLineAmount > 0
       ) {
+
         lineTaxAmt =
           (lineAmount / totalLineAmount) *
-          txn.TotalTax;
+          Number(txn.TotalTax);
       }
 
       // ✅ tax code
@@ -618,7 +741,9 @@ export const flattenMYOBSpendMoneyQBO = (items) => {
       const expenseTaxAmount =
         noTaxCodes.includes(taxCode)
           ? 0
-          : lineTaxAmt;
+          : Number(
+            lineTaxAmt.toFixed(2)
+          );
 
       // ✅ tax exclusive amount
       const taxExclusiveAmount =
@@ -648,10 +773,12 @@ export const flattenMYOBSpendMoneyQBO = (items) => {
           fmtDate(txn.Date),
 
         "Global Tax Calculation":
-            txn.IsTaxInclusive ? "Tax Inclusive" : "Tax Exclusive",
+          txn.IsTaxInclusive
+            ? "Tax Inclusive"
+            : "Tax Exclusive",
 
         "Expense Account":
-          line.Account?.DisplayID,
+          line.Account?.DisplayID || "",
 
         "Expense Description":
           line.Memo ||
@@ -670,15 +797,21 @@ export const flattenMYOBSpendMoneyQBO = (items) => {
         "Expense Account Tax Amount":
           expenseTaxAmount,
 
-        // ✅ optional useful field
+        // ✅ tax exclusive amount
         "Tax Exclusive Amount":
-          taxExclusiveAmount,
+          Number(
+            taxExclusiveAmount.toFixed(2)
+          ),
 
         "Currency Code":
           txn.ForeignCurrency?.Code || "AUD",
 
         "Exchange Rate":
           txn.CurrencyExchangeRate ?? 1,
+
+        // ✅ UID
+        "UID":
+          txn.UID || "",
       });
     }
   }
@@ -686,140 +819,6 @@ export const flattenMYOBSpendMoneyQBO = (items) => {
   return rows;
 };
 
-// ── MYOB Receive Money — raw flat ─────────────────────────────
-// Endpoint: /Banking/ReceiveMoneyTxn
-// ── MYOB Receive Money — QBO Excel Template style ─────────────
-// Template columns:
-// Deposit No | Date | Deposit To Account | Received From |
-// Global Tax Calculation | Line Account | Line Description |
-// Line Amount | Line Class | Line Tax Code | Line Tax Applicable On |
-// Location | Currency Code | Exchange Rate |
-// Linked Transaction Type | Linked Transaction Number
-
-// export const flattenMYOBReceiveMoneyQBO = (items) => {
-//   const rows = [];
-
-//   for (const txn of items) {
-
-//     const lines = txn.Lines?.length ? txn.Lines : [{}];
-
-//     // ✅ valid lines only
-//     const validLines = lines.filter(
-//       l => (l.Amount ?? l.Total ?? "") !== ""
-//     );
-
-//     // ✅ total line amount
-//     const totalLineAmount = validLines.reduce((sum, l) => {
-//       return sum + Number(l.Amount ?? l.Total ?? 0);
-//     }, 0);
-
-//     for (const line of lines) {
-
-//       const lineAmount = Number(
-//         line.Amount ?? line.Total ?? 0
-//       );
-
-//       // ❌ skip empty rows
-//       if (!lineAmount) continue;
-
-//       // ✅ tax calculation
-//       let lineTaxAmt = 0;
-
-//       if (
-//         line.TaxAmount !== undefined &&
-//         line.TaxAmount !== null
-//       ) {
-//         lineTaxAmt = Number(line.TaxAmount);
-
-//       } else if (
-//         txn.TotalTax &&
-//         totalLineAmount > 0
-//       ) {
-//         lineTaxAmt =
-//           (lineAmount / totalLineAmount) *
-//           txn.TotalTax;
-//       }
-
-//       // ✅ tax code
-//       const taxCode = line.TaxCode?.Code || "";
-
-//       // ✅ no-tax codes
-//       const noTaxCodes = ["N-T", "FRE", "NONE"];
-
-//       // ✅ tax applicable on
-//       const taxApplicableOn =
-//         noTaxCodes.includes(taxCode)
-//           ? 0
-//           : (
-//               txn.IsTaxInclusive
-//                 ? lineAmount - lineTaxAmt
-//                 : lineAmount
-//             );
-
-//       rows.push({
-
-//         "Deposit No":
-//           txn.ReceiptNumber || "",
-
-//         "Date":
-//           fmtDate(txn.Date),
-
-//         "Deposit To Account":
-//           txn.Account?.DisplayID || "",
-
-//         "Received From":
-//           cleanNone(
-//             txn.Contact?.Name || ""
-//           ),
-
-//         "Global Tax Calculation":
-//           txn.IsTaxInclusive
-//             ? "Tax Inclusive"
-//             : "Tax Exclusive",
-
-//         "Line Account":
-//           line.Account?.DisplayID,
-
-//         "Line Description":
-//           line.Memo || txn.Memo || "",
-
-//         // ✅ line amount
-//         "Line Amount":
-//           lineAmount,
-
-//         "Line Class":
-//           line.Job?.Name ||
-//           line.Job?.Number ||
-//           "",
-
-//         // ✅ tax code
-//         "Line Tax Code":
-//           taxCode,
-
-//         // ✅ fixed tax applicable
-//         "Line Tax Applicable On":
-//           taxApplicableOn,
-
-//         "Location":
-//           line.Location?.Name || "",
-
-//         "Currency Code":
-//           txn.ForeignCurrency?.Code || "AUD",
-
-//         "Exchange Rate":
-//           txn.CurrencyExchangeRate ?? 1,
-
-//         "Linked Transaction Type":
-//           "",
-
-//         "Linked Transaction Number":
-//           "",
-//       });
-//     }
-//   }
-
-//   return rows;
-// };
 
 export const flattenMYOBReceiveMoneyQBO = (items) => {
   const rows = [];
@@ -904,7 +903,7 @@ export const flattenMYOBReceiveMoneyQBO = (items) => {
           ),
 
         "Global Tax Calculation":
-           txn.IsTaxInclusive ? "Tax Inclusive" : "Tax Exclusive",
+          txn.IsTaxInclusive ? "Tax Inclusive" : "Tax Exclusive",
 
         "Line Account":
           line.Account?.DisplayID,
@@ -945,6 +944,7 @@ export const flattenMYOBReceiveMoneyQBO = (items) => {
 
         "Linked Transaction Number":
           "",
+
       });
     }
   }
@@ -952,26 +952,6 @@ export const flattenMYOBReceiveMoneyQBO = (items) => {
   return rows;
 };
 
-// ── MYOB Transfer Money — QBO Excel Template style ────────────
-// Template columns:
-// Transfer Funds From | Transfer Funds To | Transfer Amount |
-// Memo | Currency Code | Exchange Rate | Date
-
-// export const flattenMYOBTransferMoneyQBO = (items) => {
-//   return items.map((txn) => ({
-//     "Transfer Funds From": txn.FromAccount?.DisplayID
-//                              ? `${txn.FromAccount.DisplayID} ${txn.FromAccount.Name || ""}`.trim()
-//                              : "",
-//     "Transfer Funds To":   txn.ToAccount?.DisplayID
-//                              ? `${txn.ToAccount.DisplayID} ${txn.ToAccount.Name || ""}`.trim()
-//                              : "",
-//     "Transfer Amount":     txn.Amount ?? "",
-//     "Memo":                txn.Memo || "",
-//     "Currency Code":       txn.ForeignCurrency?.Code || "AUD",
-//     "Exchange Rate":       txn.CurrencyExchangeRate ?? 1,
-//     "Date":                fmtDate(txn.Date),
-//   }));
-// };
 
 
 export const flattenMYOBTransferMoneyQBO = (items) => {
@@ -1156,164 +1136,6 @@ export const flattenMYOBGeneralJournal = (items) => {
   return rows;
 };
 
-// export const flattenMYOBGeneralJournal = (items) => {
-//   const rows = [];
-
-//   for (const txn of items) {
-
-//     const lines = txn.Lines?.length
-//       ? txn.Lines
-//       : [{}];
-
-//     // ✅ valid amount lines only
-//     const validLines = lines.filter(
-//       l => (l.Amount ?? l.Total ?? "") !== ""
-//     );
-
-//     // ✅ total line amount
-//     const totalLineAmount = validLines.reduce((sum, l) => {
-//       return sum + Number(
-//         l.Amount ?? l.Total ?? 0
-//       );
-//     }, 0);
-
-//     for (const line of lines) {
-
-//       const lineAmount = Number(
-//         line.Amount ?? line.Total ?? 0
-//       );
-
-//       // ❌ skip empty rows
-//       if (!lineAmount) continue;
-
-//       // ✅ tax calculation
-//       let lineTaxAmt = 0;
-
-//       if (
-//         line.TaxAmount !== undefined &&
-//         line.TaxAmount !== null
-//       ) {
-//         lineTaxAmt = Number(line.TaxAmount);
-
-//       } else if (
-//         txn.TotalTax &&
-//         totalLineAmount > 0
-//       ) {
-//         lineTaxAmt =
-//           (lineAmount / totalLineAmount) *
-//           txn.TotalTax;
-//       }
-
-//       // ✅ tax code
-//       const taxCode =
-//         line.TaxCode?.Code || "";
-
-//       // ✅ no-tax codes
-//       const noTaxCodes = [
-//         "N-T",
-//         "FRE",
-//         "NONE"
-//       ];
-
-//       // ✅ final tax amount
-//       const finalTaxAmt =
-//         noTaxCodes.includes(taxCode)
-//           ? 0
-//           : lineTaxAmt;
-
-//       rows.push({
-
-//         // ── Transaction level ──
-
-//         "DisplayID":
-//           txn.DisplayID || "",
-
-//         "DateOccurred":
-//           fmtDate(txn.DateOccurred),
-
-//         "IsTaxInclusive":
-//           txn.IsTaxInclusive ?? "",
-
-//         "Memo":
-//           txn.Memo || "",
-
-//         "GSTReportingMethod":
-//           txn.GSTReportingMethod || "",
-
-//         "IsYearEndAdjustment":
-//           txn.IsYearEndAdjustment ?? "",
-
-//         "Category.Name":
-//           txn.Category?.Name || "",
-
-//         "Category.DisplayID":
-//           txn.Category?.DisplayID || "",
-
-//         "ForeignCurrency.Code":
-//           txn.ForeignCurrency?.Code || "",
-
-//         "ForeignCurrency.Name":
-//           txn.ForeignCurrency?.CurrencyName || "",
-
-//         "CurrencyExchangeRate":
-//           txn.CurrencyExchangeRate ?? "",
-
-//         // ── Line level ──
-
-//         "Line.Account.DisplayID":
-//           line.Account?.DisplayID || "",
-
-//         "Line.Account.Name":
-//           line.Account?.Name || "",
-
-//         "Line.Job.Number":
-//           line.Job?.Number || "",
-
-//         "Line.Job.Name":
-//           line.Job?.Name || "",
-
-//         "Line.Memo":
-//           line.Memo || "",
-
-//         // ✅ tax code
-//         "Line.TaxCode.Code":
-//           taxCode,
-
-//         // ✅ amount
-//         "Line.Amount":
-//           lineAmount,
-
-//         "Line.AmountForeign":
-//           line.AmountForeign ?? "",
-
-//         // ✅ fixed tax amount
-//         "Line.TaxAmount":
-//           finalTaxAmt,
-
-//         "Line.Credit/Debit":
-//           line.IsCredit
-//             ? "Credit"
-//             : "Debit",
-
-//         "Line.IsCredit":
-//           line.IsCredit,
-
-//         "Line.TaxAmountForeign":
-//           line.TaxAmountForeign ?? "",
-
-//         "Line.IsOverriddenTaxAmount":
-//           line.IsOverriddenTaxAmount ?? "",
-
-//         "Line.UnitCount":
-//           line.UnitCount ?? "",
-//       });
-//     }
-//   }
-
-//   return rows;
-// };
-
-// ── MYOB Sale Quote — raw flat ────────────────────────────────
 // Endpoint: /Sale/Quote or /Sale/Quote/{subType}
 export const flattenMYOBQuote = (quotes, businessName) => {
   const rows = [];

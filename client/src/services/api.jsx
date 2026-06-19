@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const api = axios.create({ withCredentials: true });
+const api = axios.create({baseURL: "/myob-api", withCredentials: true });
 
 // ── Sales Invoices ────────────────────────────────────────────
 export const invoiceAPI = {
