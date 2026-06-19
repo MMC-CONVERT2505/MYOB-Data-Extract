@@ -1,0 +1,39 @@
+name: Deploy MYOB Tool
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to AWS Server
+        uses: appleboy/ssh-action@v1.0.3
+
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.PORT }}
+
+          script: |
+            cd /home/ubuntu/MYOB-Data-Extract
+
+            echo "Pulling latest code..."
+            git pull origin main
+
+            echo "Installing client dependencies..."
+            cd client
+            npm install
+
+            echo "Installing server dependencies..."
+            cd ../server
+            npm install
+
+            echo "Restarting MYOB application..."
+            pm2 restart myob-extract
+
+            echo "Deployment Successful"
