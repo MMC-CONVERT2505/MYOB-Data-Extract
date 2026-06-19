@@ -111,7 +111,6 @@ export const flattenXeroBills = (bills, subType) => {
           contactName,
 
         "*InvoiceNumber":
-          bill.SupplierInvoiceNumber ||
           bill.Number ||
           "",
 
