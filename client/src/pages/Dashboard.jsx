@@ -76,7 +76,7 @@ const dlCSV = (items, name) => dl(toCSV(items.map(convertDatesInRow)), name + ".
 const dlJSON = (items, name) => dl(JSON.stringify(items.map(convertDatesInRow), null, 2), name + ".json", "application/json");
 
 const DATE_COLS = new Set([
-  "Payment Date","Date*","Invoice date", "Invoice Due date","Journal Date", "Invoice Date", "Due Date", "Date", "DateOccurred",
+  "Payment Date","Date*", "Journal Date*", "Bill date","Invoice date", "Invoice Due date","Journal Date", "Invoice Date", "Due Date", "Date", "DateOccurred",
   "Adjustment Note Date", "As Of Date", "PromisedDate", "LastPaymentDate",
   "Terms.DiscountDate", "Terms.BalanceDueDate", "Terms.DiscountExpiryDate", "Terms.DueDate",
 ]);
