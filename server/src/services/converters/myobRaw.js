@@ -441,7 +441,7 @@ export const flattenMYOBBillRaw = (bills, businessName) => {
             bill.Supplier?.CompanyName
           ),
 
-        "Bill date":
+        "Bill Date":
           fmtDate(
             bill.Date
           ),
