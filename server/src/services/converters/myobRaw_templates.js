@@ -831,11 +831,6 @@
 
 
 
-
-
-
-
-
 import { cleanNone, fmtDate } from "../helpers.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1020,9 +1015,9 @@ import { cleanNone, fmtDate } from "../helpers.js";
 
 //         // ✅ line description
 //         "Description":
-          
+
 //           line.Memo ||
-          
+
 //           "",
 
 //         // ✅ fixed qty
@@ -1107,18 +1102,18 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
       const quantity = isService
         ? 1
         : (
-            line.Quantity ??
-            line.UnitCount ??
-            line.ShipQuantity ??
-            1
-          );
+          line.Quantity ??
+          line.UnitCount ??
+          line.ShipQuantity ??
+          1
+        );
 
       // ✅ unit amount
       const unitAmount = isService
         ? lineAmount
         : Number(
-            line.UnitPrice ?? 0
-          );
+          line.UnitPrice ?? 0
+        );
 
       // ✅ tax code
       const taxCode =
@@ -1167,6 +1162,9 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
       ]
         .filter(Boolean)
         .join(" ");
+
+      console.log("Spend Money Date:", txn.Date);
+      console.log("Formatted Date:", fmtDate(txn.Date));
 
       rows.push({
 
@@ -1308,11 +1306,11 @@ export const flattenMYOBReceiveMoneyRaw = (items) => {
       const quantity = isService
         ? 1
         : (
-            line.Quantity ??
-            line.UnitCount ??
-            line.ShipQuantity ??
-            1
-          );
+          line.Quantity ??
+          line.UnitCount ??
+          line.ShipQuantity ??
+          1
+        );
 
       // ✅ unit amount
       const unitAmount = isService
@@ -1357,7 +1355,7 @@ export const flattenMYOBReceiveMoneyRaw = (items) => {
 
       // ✅ item name
       const itemName = line.Item?.Number
-         
+
       rows.push({
 
         // ───── TEMPLATE FIELDS ─────
@@ -1367,11 +1365,11 @@ export const flattenMYOBReceiveMoneyRaw = (items) => {
 
         "Bank Account*":
           txn.Account?.DisplayID
-            ,
+        ,
 
         "Bank Name":
           txn.Account?.Name
-            ,
+        ,
         "Contact*":
           cleanNone(
             txn.Contact?.Name ||
@@ -1413,9 +1411,9 @@ export const flattenMYOBReceiveMoneyRaw = (items) => {
           line.Account?.DisplayID || "",
 
         "Description":
-         
+
           line.Memo ||
-         
+
           "",
 
         // ✅ fixed qty
@@ -1487,11 +1485,11 @@ export const flattenMYOBTransferMoneyRaw = (items) => {
 
         "Transfer from":
           txn.FromAccount?.DisplayID
-          ,
+        ,
 
         "Transfer to":
           txn.ToAccount?.DisplayID
-            ,
+        ,
 
         "Description":
           txn.Memo || "",
