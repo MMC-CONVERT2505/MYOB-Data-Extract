@@ -335,7 +335,7 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
         // ───── TEMPLATE FIELDS ─────
 
         "Date*":
-          fmtDate(txn.Date),
+          txn.Date,
 
         "Bank Account*":
           txn.Account?.DisplayID || "",
