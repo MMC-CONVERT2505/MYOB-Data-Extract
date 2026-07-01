@@ -1392,6 +1392,9 @@ export const flattenMYOBInvoiceService = (invoices, businessName) => {
             inv.Terms?.DueDate
           ),
 
+        "CustomerPurchaseOrderNumber":
+          inv?.CustomerPurchaseOrderNumber,
+
         "Payment terms":
           inv.Terms?.PaymentIsDue || "",
 
@@ -1430,6 +1433,21 @@ export const flattenMYOBInvoiceService = (invoices, businessName) => {
 
         "Description":
           line.Description || "",
+
+        "TotalForeign":
+          line?.TotalForeign,
+        
+        "UnitPriceForeign":
+          line?.UnitPriceForeign,
+
+        "ForeignCurrency":
+          inv?.ForeignCurrency,
+
+        "CurrencyExchangeRate" :
+           inv?.CurrencyExchangeRate,
+
+        "SubtotalForeign":
+          inv?.SubtotalForeign,
 
         // ✅ fixed qty
         "Qty":
@@ -1701,6 +1719,9 @@ export const flattenMYOBBillRaw = (bills, businessName) => {
             bill.Date
           ),
 
+        "SupplierInvoiceNumber":
+          bill.SupplierInvoiceNumber,
+
         "Due Date":
           fmtDate(
             bill.Terms?.DueDate
@@ -1750,6 +1771,14 @@ export const flattenMYOBBillRaw = (bills, businessName) => {
           
         "UnitPriceForeign":
             line?.UnitPriceForeign,
+
+        "SubtotalForeign":
+          bill?.SubtotalForeign,
+        "ForeignCurrency":
+          bill?.ForeignCurrency,
+
+        "CurrencyExchangeRate":
+          bill?.CurrencyExchangeRate,
 
         "Tax code":
           taxCode,
@@ -1826,10 +1855,21 @@ export const flattenMYOBInvoicePayment = (payments) => {
         "Bank account Name":
           p.Account?.Name || "",
 
+        "AmountPaidForeign":
+          p?.AmountPaidForeign,
+
+        "ForeignCurrency":
+          p?.ForeignCurrency?.Code,
+
+        "CurrencyExchangeRate":
+          p?.CurrencyExchangeRate,
+
         "Amount":
           inv.AmountApplied ||
           p.AmountReceived ||
           "",
+        "AmountAppliedForeign": 
+          inv?.AmountAppliedForeign,
 
         "Invoice Number":
           inv.Number || "",
@@ -1887,11 +1927,24 @@ export const flattenMYOBBillPayment = (payments) => {
         "Bank account Name":
           p.Account?.Name || "",
 
+                "AmountPaidForeign":
+          p?.AmountPaidForeign,
+
+        "ForeignCurrency":
+          p?.ForeignCurrency?.Code,
+
+        "CurrencyExchangeRate":
+          p?.CurrencyExchangeRate,
+
+
         "Amount":
           line.AmountApplied ??
           line.Amount ??
           p.AmountPaid ??
           "",
+
+        "AmountAppliedForeign": 
+          line?.AmountAppliedForeign,
 
         "Details":
           p.Memo || "",
