@@ -1927,7 +1927,7 @@ export const flattenMYOBBillPayment = (payments) => {
         "Bank account Name":
           p.Account?.Name || "",
 
-                "AmountPaidForeign":
+        "AmountPaidForeign":
           p?.AmountPaidForeign,
 
         "ForeignCurrency":

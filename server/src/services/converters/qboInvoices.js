@@ -105,6 +105,9 @@ export const flattenQBOInvoiceItems = (invoices) => {
         "Product/Service":
           line.Item?.Number || line.Item?.Name || "",
 
+        "DiscountPercent":
+          line?.DiscountPercent,
+
         "Product/Service Description":
           line.Description || "",
 
