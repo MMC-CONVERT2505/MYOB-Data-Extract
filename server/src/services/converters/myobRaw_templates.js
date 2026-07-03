@@ -1172,7 +1172,7 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
         "UID":
           txn.UID || "",
 
-        "Date*":
+        "Date":
           fmtDate(txn.Date),
 
         "Reference":
@@ -1593,7 +1593,7 @@ export const flattenMYOBGeneralJournalRaw = (items) => {
         "UID":
           txn.UID || "",
 
-        "Journal Date*":
+        "Journal Date":
           fmtDate(txn.DateOccurred),
 
         "Summary":
