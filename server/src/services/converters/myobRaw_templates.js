@@ -1167,17 +1167,16 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
       console.log("Formatted Date:", fmtDate(txn.Date));
 
       rows.push({
-
         // ───── TEMPLATE FIELDS ─────
+
+        "UID":
+          txn.UID || "",
 
         "Date*":
           fmtDate(txn.Date),
 
-        "Bank Account*":
-          txn.Account?.DisplayID || "",
-
-        "Bank Name*":
-          txn.Account?.Name || "",
+        "Reference":
+          txn.PaymentNumber || "",
 
         "Contact*":
           cleanNone(
@@ -1189,19 +1188,20 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
         "Payable type":
           txn.Contact?.Type || "",
 
+        "Bank Account*":
+          txn.Account?.DisplayID || "",
+
+        "Bank Name*":
+          txn.Account?.Name || "",
+
+        "ForeignCurrency":
+          txn?.ForeignCurrency?.Code || "",
+
         "Payment method":
           txn.PaymentMethod || "",
 
-        "Reference":
-          txn.PaymentNumber || "",
-
         "Details":
           txn.Memo || "",
-
-        "Amount*":
-          txn.IsTaxInclusive
-            ? "Tax Inclusive"
-            : "Tax Exclusive",
 
         "Allocation notes":
           txn.Memo || "",
@@ -1211,24 +1211,17 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
           line.Job?.Number ||
           "",
 
-        // ✅ item/service
         "Item":
           itemName,
 
-        // ✅ fixed item price
-        "Item price":
-          unitAmount,
-
-        "Account":
-          line.Account?.DisplayID || "",
-
-        // ✅ line description
         "Description":
           line.Memo || "",
 
-        // ✅ fixed qty
         "Qty":
           quantity,
+
+        "Item price":
+          unitAmount,
 
         "Discount":
           line.DiscountPercent ?? "",
@@ -1236,18 +1229,19 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
         "Tax code":
           taxCode,
 
-        // ✅ fixed tax amount
         "Tax Amount":
-          Number(
-            taxAmount
-          ),
+          Number(taxAmount),
 
         "Amount":
           lineAmount,
 
-        // ✅ UID
-        "UID":
-          txn.UID || "",
+        "Amount*":
+          txn.IsTaxInclusive
+            ? "Tax Inclusive"
+            : "Tax Exclusive",
+
+        "Account":
+          line.Account?.DisplayID || "",
       });
     }
   }
@@ -1356,20 +1350,18 @@ export const flattenMYOBReceiveMoneyRaw = (items) => {
       // ✅ item name
       const itemName = line.Item?.Number
 
-      rows.push({
-
+     rows.push({
         // ───── TEMPLATE FIELDS ─────
+
+        "UID":
+          txn.UID || "",
 
         "Date":
           fmtDate(txn.Date),
 
-        "Bank Account*":
-          txn.Account?.DisplayID
-        ,
+        "Reference":
+          txn.ReceiptNumber || "",
 
-        "Bank Name":
-          txn.Account?.Name
-        ,
         "Contact*":
           cleanNone(
             txn.Contact?.Name ||
@@ -1377,19 +1369,20 @@ export const flattenMYOBReceiveMoneyRaw = (items) => {
             txn.Contact?.DisplayID
           ),
 
+        "Bank Account*":
+          txn.Account?.DisplayID || "",
+
+        "Bank Name":
+          txn.Account?.Name || "",
+
+        "ForeignCurrency":
+          txn?.ForeignCurrency?.Code || "",
+
         "Payment method":
           txn.PaymentMethod || "",
 
-        "Reference":
-          txn.ReceiptNumber || "",
-
         "Details":
           txn.Memo || "",
-
-        "Amount*":
-          txn.IsTaxInclusive
-            ? "Tax Inclusive"
-            : "Tax Exclusive",
 
         "Allocation notes":
           txn.Memo || "",
@@ -1399,26 +1392,17 @@ export const flattenMYOBReceiveMoneyRaw = (items) => {
           line.Job?.Number ||
           "",
 
-        // ✅ item/service
         "Item":
           itemName,
 
-        // ✅ fixed item price
-        "Item price":
-          unitAmount,
-
-        "Account":
-          line.Account?.DisplayID || "",
-
         "Description":
+          line.Memo || "",
 
-          line.Memo ||
-
-          "",
-
-        // ✅ fixed qty
         "Qty":
           quantity,
+
+        "Item price":
+          unitAmount,
 
         "Discount":
           line.DiscountPercent ?? "",
@@ -1426,17 +1410,19 @@ export const flattenMYOBReceiveMoneyRaw = (items) => {
         "Tax code":
           taxCode,
 
-        // ✅ fixed tax amount
         "Tax Amount":
-          Number(
-            taxAmount
-          ),
+          Number(taxAmount),
 
         "Amount":
           lineAmount,
 
-        "UID":
-          txn.UID || "",
+        "Amount*":
+          txn.IsTaxInclusive
+            ? "Tax Inclusive"
+            : "Tax Exclusive",
+
+        "Account":
+          line.Account?.DisplayID || "",
       });
     }
   }
@@ -1602,16 +1588,13 @@ export const flattenMYOBGeneralJournalRaw = (items) => {
       }
 
       rows.push({
-
         // ───── TEMPLATE FIELDS ─────
 
-        "Journal Date*":
-          fmtDate(
-            txn.DateOccurred
-          ),
+        "UID":
+          txn.UID || "",
 
-        "Amount*":
-          signedAmount,
+        "Journal Date*":
+          fmtDate(txn.DateOccurred),
 
         "Summary":
           txn.DisplayID || "",
@@ -1628,6 +1611,23 @@ export const flattenMYOBGeneralJournalRaw = (items) => {
         "Account Name":
           line.Account?.Name || "",
 
+        "Contact":
+          "",
+
+        "ForeignCurrency":
+          txn?.ForeignCurrency?.Code || "",
+
+        "CurrencyExchangeRate":
+          txn?.CurrencyExchangeRate,
+
+        "Trans Type":
+          "Journal",
+
+        "classification":
+          line.Job?.Name ||
+          line.Job?.Number ||
+          "",
+
         // ✅ debit
         "Debit":
           debitAmount,
@@ -1640,23 +1640,10 @@ export const flattenMYOBGeneralJournalRaw = (items) => {
           taxCode,
 
         "Tax":
-          Number(
-            taxAmount
-          ),
+          Number(taxAmount),
 
-        "Contact":
-          "",
-
-        "Trans Type":
-          "Journal",
-
-        "classification":
-          line.Job?.Name ||
-          line.Job?.Number ||
-          "",
-
-        "UID":
-          txn.UID || "",
+        "Amount*":
+          signedAmount,
       });
     }
   }
