@@ -61,6 +61,7 @@ import { cleanNone, fmtDate, safe } from "../helpers.js";
 // };
 
 export const flattenQBOBillItems = (bills, subType) => {
+
   const rows = [];
   const isItem = subType === "Item";
 
@@ -78,13 +79,18 @@ export const flattenQBOBillItems = (bills, subType) => {
       bill.Terms?.DueDate || bill.PromisedDate
     );
 
-    // ✅ valid amount lines only
-    const validLines = lines.filter(
-      l => (l.Total ?? l.Amount ?? "") !== ""
+    // ✅ no tax codes
+    const noTaxCodes = ["FRE", "N-T", "NONE"];
+
+    // ✅ taxable transaction lines only
+    const taxableLines = lines.filter(
+      l =>
+        (l.Total ?? l.Amount ?? "") !== "" &&
+        !noTaxCodes.includes(l.TaxCode?.Code)
     );
 
-    // ✅ total amount for tax distribution
-    const totalLineAmount = validLines.reduce((sum, l) => {
+    // ✅ total taxable amount
+    const totalLineAmount = taxableLines.reduce((sum, l) => {
       return sum + Number(l.Total ?? l.Amount ?? 0);
     }, 0);
 
@@ -104,13 +110,18 @@ export const flattenQBOBillItems = (bills, subType) => {
       if (!lineTotal) continue;
 
       // ✅ tax fix
+      const taxCode = line.TaxCode?.Code || "";
       let lineTaxAmt = 0;
 
       if (
         line.TaxAmount !== undefined &&
         line.TaxAmount !== null
       ) {
-        lineTaxAmt = line.TaxAmount;
+        lineTaxAmt = Number(line.TaxAmount);
+
+      } else if (noTaxCodes.includes(taxCode)) {
+        // Tax free line
+        lineTaxAmt = 0;
 
       } else if (
         bill.TotalTax &&
@@ -118,13 +129,8 @@ export const flattenQBOBillItems = (bills, subType) => {
       ) {
         lineTaxAmt =
           (lineTotal / totalLineAmount) *
-          bill.TotalTax;
+          Number(bill.TotalTax);
       }
-
-      const taxExclusive =
-        bill.IsTaxInclusive
-          ? lineTotal - lineTaxAmt
-          : lineTotal;
 
       const acctStr = [
         line.Account?.DisplayID,
@@ -172,9 +178,7 @@ export const flattenQBOBillItems = (bills, subType) => {
             : "",
 
         "Expense Tax Code":
-          !isItem
-            ? (line.TaxCode?.Code || "")
-            : "",
+          !isItem ? taxCode : "",
 
         "Expense Account Tax Amount":
           !isItem ? lineTaxAmt : "",
@@ -199,17 +203,13 @@ export const flattenQBOBillItems = (bills, subType) => {
           isItem ? qty : "",
 
         "Product/Services Tax Rate":
-          isItem
-            ? (line.TaxCode?.Code || "")
-            : "",
+          isItem ? taxCode : "",
 
         "Product/Services Billable Status":
           "",
 
         "Product/Services Tax Code":
-          isItem
-            ? (line.TaxCode?.Code || "")
-            : "",
+          isItem ? taxCode : "",
 
         "Product/Services Tax Amount":
           isItem ? lineTaxAmt : "",
@@ -246,9 +246,6 @@ export const flattenQBOBillItems = (bills, subType) => {
         "Tax Rate":
           line.TaxCode?.Code || "",
 
-        "Tax Exclusive Amount":
-          taxExclusive,
-
         "Amount":
           lineTotal,
 
@@ -262,7 +259,7 @@ export const flattenQBOBillItems = (bills, subType) => {
         "Po Number":
           bill.CustomerPurchaseOrderNumber || "",
         "Location":
-           "",
+          "",
       });
     }
   }
@@ -270,7 +267,9 @@ export const flattenQBOBillItems = (bills, subType) => {
   return rows;
 };
 
+
 export const flattenQBOBillService = (bills) => {
+
   const rows = [];
 
   for (const bill of bills) {
@@ -287,13 +286,18 @@ export const flattenQBOBillService = (bills) => {
       bill.Terms?.DueDate || bill.PromisedDate
     );
 
-    // ✅ only transaction lines
-    const transactionLines = lines.filter(
-      l => l.Type === "Transaction"
+    // ✅ tax free codes
+    const noTaxCodes = ["FRE", "N-T", "NONE"];
+
+    // ✅ only taxable transaction lines
+    const taxableLines = lines.filter(
+      l =>
+        l.Type === "Transaction" &&
+        !noTaxCodes.includes(l.TaxCode?.Code)
     );
 
-    // ✅ total amount
-    const totalLineAmount = transactionLines.reduce((sum, l) => {
+    // ✅ total taxable amount
+    const totalLineAmount = taxableLines.reduce((sum, l) => {
       return sum + Number(l.Total ?? l.Amount ?? 0);
     }, 0);
 
@@ -307,6 +311,7 @@ export const flattenQBOBillService = (bills) => {
       if (!lineTotal) continue;
 
       // ✅ tax logic
+      const taxCode = line.TaxCode?.Code || "";
       let lineTaxAmt = 0;
 
       if (
@@ -314,6 +319,10 @@ export const flattenQBOBillService = (bills) => {
         line.TaxAmount !== null
       ) {
         lineTaxAmt = Number(line.TaxAmount);
+
+      } else if (noTaxCodes.includes(taxCode)) {
+        // Tax free line
+        lineTaxAmt = 0;
 
       } else if (
         bill.TotalTax &&
@@ -324,10 +333,6 @@ export const flattenQBOBillService = (bills) => {
           (lineTotal / totalLineAmount) *
           Number(bill.TotalTax);
       }
-
-      const taxExclusive = bill.IsTaxInclusive
-        ? lineTotal - lineTaxAmt
-        : lineTotal;
 
       const acctStr =
         line.Account?.DisplayID || "";
@@ -361,7 +366,7 @@ export const flattenQBOBillService = (bills) => {
           line.Description || "",
 
         "Expense Line Amount":
-          taxExclusive,
+          line.Total,
 
         "Expense Class":
           line.Category?.Name ||
@@ -369,13 +374,13 @@ export const flattenQBOBillService = (bills) => {
           "",
 
         "Expense Tax Code":
-          line.TaxCode?.Code || "",
+          taxCode,
 
         "Expense Account Tax Amount":
           lineTaxAmt,
 
         "Total":
-          lineTotal,
+          line.TotalAmount,
 
         "Currency Code":
           bill.ForeignCurrency?.Code || "AUD",
@@ -386,11 +391,8 @@ export const flattenQBOBillService = (bills) => {
         "Exchange Rate":
           bill.CurrencyExchangeRate ?? 1,
 
-        // ✅ FIXED LOCATION
         "Location":
-          
           "",
-          
 
         "SupplierInvoiceNumber":
           bill.SupplierInvoiceNumber || "",

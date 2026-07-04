@@ -41,15 +41,22 @@ export const flattenQBOInvoiceItems = (invoices) => {
 
     const lines = inv.Lines?.length ? inv.Lines : [{}];
 
-    // ✅ valid lines only
-    const validLines = lines.filter(
-      l =>
-        (l.Quantity ?? "") !== "" ||
-        (l.UnitPrice ?? "") !== ""
-    );
+    // ✅ no tax codes
+    const noTaxCodes = ["FRE", "N-T", "NONE"];
 
-    // ✅ total line amount (Qty * UnitPrice)
-    const totalLineAmount = validLines.reduce((sum, l) => {
+    // ✅ taxable lines only
+    const taxableLines = lines.filter(l => {
+      const qty = Number(l.ShipQuantity ?? l.Quantity ?? 1);
+      const unitPrice = Number(l.UnitPrice ?? 0);
+
+      return (
+        qty * unitPrice !== 0 &&
+        !noTaxCodes.includes(l.TaxCode?.Code)
+      );
+    });
+
+    // ✅ total taxable amount
+    const totalLineAmount = taxableLines.reduce((sum, l) => {
       const qty = Number(l.ShipQuantity ?? l.Quantity ?? 1);
       const unitPrice = Number(l.UnitPrice ?? 0);
 
@@ -59,18 +66,23 @@ export const flattenQBOInvoiceItems = (invoices) => {
     for (const line of lines) {
 
       const quantity = Number(
-        line.ShipQuantity ?? line.Quantity ?? 1
+        line.ShipQuantity ??
+        line.Quantity ??
+        1
       );
 
-      const unitPrice = Number(line.UnitPrice ?? 0);
+      const unitPrice = Number(
+        line.UnitPrice ?? 0
+      );
 
-      // ✅ Qty * UnitPrice
+      // ✅ Qty × Unit Price
       const lineAmount = quantity * unitPrice;
 
       // ❌ skip empty rows
       if (!lineAmount) continue;
 
       // ✅ tax calculation
+      const taxCode = line.TaxCode?.Code || "";
       let lineTaxAmt = 0;
 
       if (
@@ -78,9 +90,18 @@ export const flattenQBOInvoiceItems = (invoices) => {
         line.TaxAmount !== null
       ) {
         lineTaxAmt = Number(line.TaxAmount);
-      } else if (inv.TotalTax && totalLineAmount > 0) {
+
+      } else if (noTaxCodes.includes(taxCode)) {
+        // Tax free line
+        lineTaxAmt = 0;
+
+      } else if (
+        inv.TotalTax &&
+        totalLineAmount > 0
+      ) {
         lineTaxAmt =
-          (lineAmount / totalLineAmount) * Number(inv.TotalTax);
+          (lineAmount / totalLineAmount) *
+          Number(inv.TotalTax);
       }
 
       rows.push({
@@ -91,7 +112,10 @@ export const flattenQBOInvoiceItems = (invoices) => {
           inv.Number || "",
 
         "Due Date":
-          fmtDate(inv.PromisedDate || inv.Terms?.DueDate),
+          fmtDate(
+            inv.PromisedDate ||
+            inv.Terms?.DueDate
+          ),
 
         "Customer":
           cleanNone(inv.Customer?.Name),
@@ -100,13 +124,14 @@ export const flattenQBOInvoiceItems = (invoices) => {
           inv.CustomerPurchaseOrderNumber || "",
 
         "Global Tax calculation":
-          inv.IsTaxInclusive ? "Tax Inclusive" : "Tax Exclusive",
+          inv.IsTaxInclusive
+            ? "Tax Inclusive"
+            : "Tax Exclusive",
 
         "Product/Service":
-          line.Item?.Number || line.Item?.Name || "",
-
-        "DiscountPercent":
-          line?.DiscountPercent,
+          line.Item?.Number ||
+          line.Item?.Name ||
+          "",
 
         "Product/Service Description":
           line.Description || "",
@@ -117,12 +142,15 @@ export const flattenQBOInvoiceItems = (invoices) => {
         "Product/Service Unit Price":
           unitPrice,
 
-        // ✅ Qty * UnitPrice
+        // ✅ Qty × Unit Price
         "Line Amount":
           lineAmount,
 
         "Product/Service Tax Rate":
-          line.TaxCode?.Code || "",
+          taxCode,
+
+        "DiscountPercent":
+          line?.DiscountPercent,
 
         "Product/Service Tax Amount":
           lineTaxAmt,
@@ -137,9 +165,10 @@ export const flattenQBOInvoiceItems = (invoices) => {
           inv.CurrencyExchangeRate ?? 1,
 
         "Location":
-           "",
+          "",
 
-        "Freight ($)":                 inv.Freight ?? "",
+        "Freight ($)":
+          inv.Freight ?? "",
       });
     }
   }
@@ -151,38 +180,126 @@ export const flattenQBOInvoiceService = (invoices) => {
   const rows = [];
 
   for (const inv of invoices) {
+
     const lines = inv.Lines?.length ? inv.Lines : [{}];
+
+    // ✅ no tax codes
+    const noTaxCodes = ["FRE", "N-T", "NONE"];
+
+    // ✅ taxable transaction lines only
+    const taxableLines = lines.filter(
+      l =>
+        l.Type === "Transaction" &&
+        !noTaxCodes.includes(l.TaxCode?.Code)
+    );
+
+    // ✅ total taxable amount
+    const totalLineAmount = taxableLines.reduce((sum, l) => {
+      return sum + Number(l.Total ?? l.Amount ?? 0);
+    }, 0);
 
     for (const line of lines) {
 
-      const amount = line.Total ?? line.Amount ?? "";
+      const lineAmount = Number(
+        line.Total ?? line.Amount ?? 0
+      );
 
-      // ❌ Skip row if Amount empty
-      if (amount === "" || amount === null || amount === undefined) {
-        continue;
+      // ❌ skip empty rows
+      if (!lineAmount) continue;
+
+      // ✅ tax calculation
+      const taxCode = line.TaxCode?.Code || "";
+      let lineTaxAmt = 0;
+
+      if (
+        line.TaxAmount !== undefined &&
+        line.TaxAmount !== null
+      ) {
+        lineTaxAmt = Number(line.TaxAmount);
+
+      } else if (noTaxCodes.includes(taxCode)) {
+        // Tax free line
+        lineTaxAmt = 0;
+
+      } else if (
+        inv.TotalTax &&
+        totalLineAmount > 0 &&
+        line.Type === "Transaction"
+      ) {
+        lineTaxAmt =
+          (lineAmount / totalLineAmount) *
+          Number(inv.TotalTax);
       }
 
       rows.push({
-        "Invoice Date":                fmtDate(inv.Date),
-        "Invoice No":                  inv.Number || "",
-        "Due Date":                    fmtDate(inv.PromisedDate || inv.Terms?.DueDate),
-        "Customer":                    inv.Customer?.Name,
-        "Global Tax calculation":      inv.IsTaxInclusive ? "Tax Inclusive" : "Tax Exclusive",
-        "Product/Service":             line.Account?.DisplayID || line.Account?.Name || "",
-        "Product/Service Description": line.Description || "",
-        "Product/Service Quantity":    line.UnitCount ?? 1,
-        "Product/Service Unit Price":  line.UnitPrice || line.Total || "",
-        "Product/Service Tax Rate":    line.TaxCode?.Code || "",
-        "Product/Service Tax Amount":  line.TaxAmount ?? "",
-        "Tax Amount":                  line.TaxAmount ?? inv.TotalTax ?? 0,
-        "Product/Service Class":       line.Category?.Name || line.Job?.Name || "",
-        "Currency Code":               inv.ForeignCurrency?.Code || "AUD",
-        "Exchange Rate":               inv.CurrencyExchangeRate ?? 1,
-        "LineAmount":                      amount,
-        "Total Invoice Amount":        inv.TotalAmount ?? "",
-         "Po Number":
+        "Invoice Date":
+          fmtDate(inv.Date),
+
+        "Invoice No":
+          inv.Number || "",
+
+        "Due Date":
+          fmtDate(
+            inv.PromisedDate ||
+            inv.Terms?.DueDate
+          ),
+
+        "Customer":
+          inv.Customer?.Name,
+
+        "Global Tax calculation":
+          inv.IsTaxInclusive
+            ? "Tax Inclusive"
+            : "Tax Exclusive",
+
+        "Product/Service":
+          line.Account?.DisplayID ||
+          line.Account?.Name ||
+          "",
+
+        "Product/Service Description":
+          line.Description || "",
+
+        "Product/Service Quantity":
+          line.UnitCount ?? 1,
+
+        "Product/Service Unit Price":
+          line.UnitPrice ||
+          line.Total ||
+          "",
+
+        "Product/Service Tax Rate":
+          taxCode,
+
+        "Product/Service Tax Amount":
+          lineTaxAmt,
+
+        "Tax Amount":
+          lineTaxAmt,
+
+        "Product/Service Class":
+          line.Category?.Name ||
+          line.Job?.Name ||
+          "",
+
+        "Currency Code":
+          inv.ForeignCurrency?.Code || "AUD",
+
+        "Exchange Rate":
+          inv.CurrencyExchangeRate ?? 1,
+
+        "LineAmount":
+          lineAmount,
+
+        "Total Invoice Amount":
+          inv.TotalAmount ?? "",
+
+        "Po Number":
           inv.CustomerPurchaseOrderNumber || "",
-        "Freight ($)":                 inv.Freight ?? "",
+
+        "Freight ($)":
+          inv.Freight ?? "",
+
         "Location":
           "",
       });
