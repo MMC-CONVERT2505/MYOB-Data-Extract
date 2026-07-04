@@ -484,7 +484,7 @@
 
 //         "TotalForeign": 
 //            line?.TotalForeign,
-          
+
 //         "UnitPriceForeign":
 //             line?.UnitPriceForeign,
 
@@ -1436,15 +1436,15 @@ export const flattenMYOBInvoiceService = (invoices, businessName) => {
 
         "TotalForeign":
           line?.TotalForeign,
-        
+
         "UnitPriceForeign":
           line?.UnitPriceForeign,
 
         "ForeignCurrency":
           inv?.ForeignCurrency,
 
-        "CurrencyExchangeRate" :
-           inv?.CurrencyExchangeRate,
+        "CurrencyExchangeRate":
+          inv?.CurrencyExchangeRate,
 
         "SubtotalForeign":
           inv?.SubtotalForeign,
@@ -1766,11 +1766,11 @@ export const flattenMYOBBillRaw = (bills, businessName) => {
         "Discount":
           line.DiscountPercent ?? "",
 
-        "TotalForeign": 
-           line?.TotalForeign,
-          
+        "TotalForeign":
+          line?.TotalForeign,
+
         "UnitPriceForeign":
-            line?.UnitPriceForeign,
+          line?.UnitPriceForeign,
 
         "SubtotalForeign":
           bill?.SubtotalForeign,
@@ -1830,12 +1830,73 @@ export const flattenMYOBInvoicePayment = (payments) => {
 
     for (const inv of invoices) {
 
-      rows.push({
+      // rows.push({
 
+      //   // ───── TEMPLATE FIELDS ─────
+
+      //   "Date":
+      //     fmtDate(p.Date),
+
+      //   "Contact":
+      //     cleanNone(
+      //       p.Customer?.Name ||
+      //       p.Customer?.CompanyName
+      //     ),
+
+      //   "Payment method":
+      //     p.PaymentMethod || "",
+
+      //   "Reference":
+      //     p.ReceiptNumber || "",
+
+      //   "Bank account":
+      //     p.Account?.DisplayID || "",
+
+      //   "Bank account Name":
+      //     p.Account?.Name || "",
+
+      //   "AmountPaidForeign":
+      //     p?.AmountPaidForeign,
+
+      //   "ForeignCurrency":
+      //     p?.ForeignCurrency?.Code,
+
+      //   "CurrencyExchangeRate":
+      //     p?.CurrencyExchangeRate,
+
+      //   "Amount":
+      //     inv.AmountApplied ||
+      //     p.AmountReceived ||
+      //     "",
+      //   "AmountAppliedForeign":
+      //     inv?.AmountAppliedForeign,
+
+      //   "Invoice Number":
+      //     inv.Number || "",
+
+      //   "Details":
+      //     p.Memo || "",
+
+      //   "Allocation notes":
+      //     inv.Description || "",
+
+      //   // ✅ added invoice UID at last
+      //   "Invoice UID":
+      //     inv.UID || "",
+      // });
+
+
+      rows.push({
         // ───── TEMPLATE FIELDS ─────
+
+        "Invoice UID":
+          inv.UID || "",
 
         "Date":
           fmtDate(p.Date),
+
+        "Reference":
+          p.ReceiptNumber || "",
 
         "Contact":
           cleanNone(
@@ -1846,30 +1907,20 @@ export const flattenMYOBInvoicePayment = (payments) => {
         "Payment method":
           p.PaymentMethod || "",
 
-        "Reference":
-          p.ReceiptNumber || "",
-
         "Bank account":
           p.Account?.DisplayID || "",
 
         "Bank account Name":
           p.Account?.Name || "",
 
-        "AmountPaidForeign":
-          p?.AmountPaidForeign,
-
         "ForeignCurrency":
-          p?.ForeignCurrency?.Code,
+          p?.ForeignCurrency?.Code || "",
 
         "CurrencyExchangeRate":
           p?.CurrencyExchangeRate,
 
-        "Amount":
-          inv.AmountApplied ||
-          p.AmountReceived ||
-          "",
-        "AmountAppliedForeign": 
-          inv?.AmountAppliedForeign,
+        "AmountPaidForeign":
+          p?.AmountPaidForeign,
 
         "Invoice Number":
           inv.Number || "",
@@ -1880,10 +1931,15 @@ export const flattenMYOBInvoicePayment = (payments) => {
         "Allocation notes":
           inv.Description || "",
 
-        // ✅ added invoice UID at last
-        "Invoice UID":
-          inv.UID || "",
+        "AmountAppliedForeign":
+          inv?.AmountAppliedForeign,
+
+        "Amount":
+          inv.AmountApplied ||
+          p.AmountReceived ||
+          "",
       });
+
     }
   }
 
@@ -1905,12 +1961,80 @@ export const flattenMYOBBillPayment = (payments) => {
 
     for (const line of lines) {
 
-      rows.push({
+      // rows.push({
 
+      //   // ───── TEMPLATE FIELDS ─────
+
+      //   "Date":
+      //     fmtDate(p.Date),
+
+      //   "Contact":
+      //     cleanNone(
+      //       p.Supplier?.Name ||
+      //       p.Supplier?.CompanyName
+      //     ),
+
+      //   "Reference":
+      //     p.PaymentNumber || "",
+
+      //   "Bank account":
+      //     p.Account?.DisplayID || "",
+
+      //   "Bank account Name":
+      //     p.Account?.Name || "",
+
+      //   "AmountPaidForeign":
+      //     p?.AmountPaidForeign,
+
+      //   "ForeignCurrency":
+      //     p?.ForeignCurrency?.Code,
+
+      //   "CurrencyExchangeRate":
+      //     p?.CurrencyExchangeRate,
+
+
+      //   "Amount":
+      //     line.AmountApplied ??
+      //     line.Amount ??
+      //     p.AmountPaid ??
+      //     "",
+
+      //   "AmountAppliedForeign": 
+      //     line?.AmountAppliedForeign,
+
+      //   "Details":
+      //     p.Memo || "",
+
+      //   "Allocation notes":
+      //     line.Description || "",
+
+      //   "Bill Number":
+      //     line.Purchase?.Number ||
+      //     line.Number ||
+      //     line.BillNumber ||
+      //     "",
+
+      //   // ✅ added Bill UID at last
+      //   "Bill UID":
+      //     line.Purchase?.UID ||
+      //     line.UID ||
+      //     "",
+      // });
+
+
+      rows.push({
         // ───── TEMPLATE FIELDS ─────
+
+        "Bill UID":
+          line.Purchase?.UID ||
+          line.UID ||
+          "",
 
         "Date":
           fmtDate(p.Date),
+
+        "Reference":
+          p.PaymentNumber || "",
 
         "Contact":
           cleanNone(
@@ -1918,39 +2042,20 @@ export const flattenMYOBBillPayment = (payments) => {
             p.Supplier?.CompanyName
           ),
 
-        "Reference":
-          p.PaymentNumber || "",
-
         "Bank account":
           p.Account?.DisplayID || "",
 
         "Bank account Name":
           p.Account?.Name || "",
 
-        "AmountPaidForeign":
-          p?.AmountPaidForeign,
-
         "ForeignCurrency":
-          p?.ForeignCurrency?.Code,
+          p?.ForeignCurrency?.Code || "",
 
         "CurrencyExchangeRate":
           p?.CurrencyExchangeRate,
 
-
-        "Amount":
-          line.AmountApplied ??
-          line.Amount ??
-          p.AmountPaid ??
-          "",
-
-        "AmountAppliedForeign": 
-          line?.AmountAppliedForeign,
-
-        "Details":
-          p.Memo || "",
-
-        "Allocation notes":
-          line.Description || "",
+        "AmountPaidForeign":
+          p?.AmountPaidForeign,
 
         "Bill Number":
           line.Purchase?.Number ||
@@ -1958,10 +2063,19 @@ export const flattenMYOBBillPayment = (payments) => {
           line.BillNumber ||
           "",
 
-        // ✅ added Bill UID at last
-        "Bill UID":
-          line.Purchase?.UID ||
-          line.UID ||
+        "Details":
+          p.Memo || "",
+
+        "Allocation notes":
+          line.Description || "",
+
+        "AmountAppliedForeign":
+          line?.AmountAppliedForeign,
+
+        "Amount":
+          line.AmountApplied ??
+          line.Amount ??
+          p.AmountPaid ??
           "",
       });
     }
