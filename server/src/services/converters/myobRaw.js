@@ -1915,12 +1915,13 @@ export const flattenMYOBInvoicePayment = (payments) => {
 
         "ForeignCurrency":
           p?.ForeignCurrency?.Code || "",
+        
+        "AmountPaidForeign":
+          p?.AmountPaidForeign || "",
 
         "CurrencyExchangeRate":
           p?.CurrencyExchangeRate,
 
-        "AmountPaidForeign":
-          p?.AmountPaidForeign,
 
         "Invoice Number":
           inv.Number || "",
