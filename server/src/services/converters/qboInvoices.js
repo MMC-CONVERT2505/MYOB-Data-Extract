@@ -374,3 +374,29 @@ export const flattenQBOInvoicePayments = (payments) => {
   }
   return rows;
 };
+
+// ── QBO Credit Refund ────────────────────────────────────────
+// Endpoint: /Sale/CreditRefund
+export const flattenQBOCreditRefund = (items) => {
+  const rows = [];
+  for (const cr of items) {
+    rows.push({
+      "Customer": cleanNone(cr.Customer?.Name || cr.Customer?.DisplayID),
+      "Date": fmtDate(cr.Date),
+      "Cheque/Refund No": cr.Number || "",
+      "Invoice Number": cr.Invoice?.Number || "",
+      "Bank account": cr.Account?.DisplayID || "",
+      "Bank account Name": cr.Account?.Name || "",
+      "Amount": cr.Amount ?? "",
+      "Payee": cr.Payee || "",
+      "Memo": cr.Memo || "",
+      "Cheque Printed": cr.ChequePrinted ? "Yes" : "No",
+      "Delivery Status": cr.DeliveryStatus || "",
+      "Currency Code": cr.ForeignCurrency?.Code || "AUD",
+      "Customer UID": cr.Customer?.UID || "",
+      "Invoice UID": cr.Invoice?.UID || "",
+      "UID": cr.UID || "",
+    });
+  }
+  return rows;
+};

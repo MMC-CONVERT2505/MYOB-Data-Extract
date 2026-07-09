@@ -56,7 +56,7 @@ export const extractData = async (req, res, next) => {
     // Reference types → "reference" string (date-independent)
     // Transactional   → actual date strings
     const cacheStart = isReference ? "reference" : start;
-    const cacheEnd   = isReference ? "reference" : end;
+    const cacheEnd = isReference ? "reference" : end;
 
     // ── Cache Check ───────────────────────────────────────────
     const cachedItems = await getCachedExtraction(
@@ -219,6 +219,51 @@ export const extractData = async (req, res, next) => {
           break;
         }
 
+        // ── Credit Refunds (Sale/CreditRefund) ────────────────
+        case "creditRefunds": {
+          const crEndpoints = [
+            `/Sale/CreditRefund?$top=1000&$filter=${encodeURIComponent(dateFilter)}&$orderby=Date desc`,
+            `/Sale/CreditRefund?$top=1000&$orderby=Date desc`,
+            `/Sale/CreditRefund`,
+          ];
+          let crFetched = false;
+          for (const ep of crEndpoints) {
+            try {
+              let allItems = [];
+              let pageUrl = ep;
+              while (pageUrl) {
+                const data = await myobRequest(dbUser, userId, "GET", pageUrl);
+                const pageItems = data?.Items || [];
+                allItems = allItems.concat(pageItems);
+                if (data?.NextPageLink && pageItems.length > 0) {
+                  const u = new URL(data.NextPageLink);
+                  const parts = u.pathname.split("/");
+                  const bizIdx = parts.indexOf(dbUser.businessId);
+                  pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
+                } else { pageUrl = null; }
+              }
+              items = ep.includes("filter")
+                ? allItems
+                : allItems.filter(i => {
+                  if (!i.Date) return true;
+                  const d = i.Date.substring(0, 10);
+                  return d >= start && d <= end;
+                });
+              console.log(`✅ ${ep.split("?")[0]} → ${items.length} records`);
+              crFetched = true;
+              break;
+            } catch (err) {
+              if (err.status === 400 || err.status === 404) {
+                console.warn(`⚠️ ${ep.split("?")[0]} returned ${err.status}, trying next...`);
+                continue;
+              }
+              throw err;
+            }
+          }
+          if (!crFetched) { console.warn("⚠️ Credit Refunds not available"); items = []; }
+          break;
+        }
+
         // ── Vendor Credits ────────────────────────────────────
         case "vendorCredits": {
           const vcEndpoints = [
@@ -252,6 +297,8 @@ export const extractData = async (req, res, next) => {
           if (!vcFetched) { console.warn("⚠️ Vendor Credits not available"); items = []; }
           break;
         }
+
+
 
         // ── Invoice Payments ──────────────────────────────────
         case "invoicePayments": {
@@ -328,9 +375,9 @@ export const extractData = async (req, res, next) => {
         // ── Banking ───────────────────────────────────────────
         case "banking": {
           const bankingEndpoints = {
-            spend:      "/Banking/SpendMoneyTxn",
-            receive:    "/Banking/ReceiveMoneyTxn",
-            transfer:   "/Banking/TransferMoneyTxn",
+            spend: "/Banking/SpendMoneyTxn",
+            receive: "/Banking/ReceiveMoneyTxn",
+            transfer: "/Banking/TransferMoneyTxn",
             creditNote: "/Sale/CreditSettlement",
             billCredit: "/Purchase/DebitSettlement",
           };
@@ -641,15 +688,15 @@ export const extractData = async (req, res, next) => {
       estimatedBytes = estimatePayloadSize(items.slice(0, 100), items.length);
       await saveExtractionWithCache({
         userId,
-        businessId:   dbUser.businessId,
+        businessId: dbUser.businessId,
         businessName: dbUser.businessName || "",
-        startDate:    cacheStart,   // ✅ FIXED — was: start
-        endDate:      cacheEnd,     // ✅ FIXED — was: end
+        startDate: cacheStart,   // ✅ FIXED — was: start
+        endDate: cacheEnd,     // ✅ FIXED — was: end
         dataType,
-        subType:      subType || null,
+        subType: subType || null,
         outputFormat,
-        status:       "success",
-        itemCount:    items.length,
+        status: "success",
+        itemCount: items.length,
         items,
         estimatedBytes,
       });
@@ -665,22 +712,22 @@ export const extractData = async (req, res, next) => {
       items = [];
     }
 
-    const myobFlat  = convertToMYOBRaw(items, dataType, subType || null, businessName);
-    let converted   = null;
-    if (outputFormat === "qbo")  converted = convertToQBO(items, dataType, subType || null, businessName);
+    const myobFlat = convertToMYOBRaw(items, dataType, subType || null, businessName);
+    let converted = null;
+    if (outputFormat === "qbo") converted = convertToQBO(items, dataType, subType || null, businessName);
     if (outputFormat === "xero") converted = convertToXero(items, dataType, subType || null, businessName);
 
     const responseItems = outputFormat === "raw" ? myobFlat : (converted || myobFlat);
 
     res.json({
-      success:   true,
+      success: true,
       dataType,
-      subType:   subType || null,
+      subType: subType || null,
       startDate: cacheStart,
-      endDate:   cacheEnd,
-      count:     items.length,
+      endDate: cacheEnd,
+      count: items.length,
       fromCache,
-      items:     responseItems,
+      items: responseItems,
       converted: outputFormat !== "raw" && converted
         ? { count: converted.length, items: converted }
         : null,
@@ -690,17 +737,17 @@ export const extractData = async (req, res, next) => {
     try {
       await saveExtractionWithCache({
         userId,
-        businessId:   dbUser?.businessId || "",
+        businessId: dbUser?.businessId || "",
         businessName: dbUser?.businessName || "",
         startDate,
         endDate,
         dataType,
-        subType:      subType || null,
+        subType: subType || null,
         outputFormat,
-        status:       "failed",
-        itemCount:    0,
+        status: "failed",
+        itemCount: 0,
         errorMessage: err.message,
-        items:        [],
+        items: [],
         estimatedBytes: 0,
       });
     } catch (histErr) {
@@ -728,6 +775,17 @@ export const getVendorCredits = async (req, res, next) => {
     const { top = 200, skip = 0 } = req.query;
     const data = await myobRequest(dbUser, userId, "GET",
       `/Purchase/DebitSettlement?$top=${top}&$skip=${skip}&$orderby=Date desc`);
+    res.json(data);
+  } catch (err) { next(err); }
+};
+
+// ── GET /api/extract/credit-refunds ──────────────────────────
+export const getCreditRefunds = async (req, res, next) => {
+  try {
+    const { dbUser, userId } = getAuth(req);
+    const { top = 200, skip = 0 } = req.query;
+    const data = await myobRequest(dbUser, userId, "GET",
+      `/Sale/CreditRefund?$top=${top}&$skip=${skip}&$orderby=Date desc`);
     res.json(data);
   } catch (err) { next(err); }
 };

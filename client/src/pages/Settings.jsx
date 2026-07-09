@@ -25,6 +25,7 @@ const DATA_TYPE_OPTIONS = [
   { value: "bills",           label: "Bills",            color: "#f59e0b" },
   { value: "creditNotes",     label: "Credit Notes",     color: "#10b981" },
   { value: "vendorCredits",   label: "Vendor Credits",   color: "#3b82f6" },
+  { value: "creditRefunds",   label: "Credit Refunds",   color: "#d946ef" },
   { value: "invoicePayments", label: "Invoice Payments", color: "#8b5cf6" },
   { value: "billPayments",    label: "Bill Payments",    color: "#ec4899" },
   { value: "banking",         label: "Banking",          color: "#14b8a6" },
