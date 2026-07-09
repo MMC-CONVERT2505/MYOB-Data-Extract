@@ -298,22 +298,14 @@ export const flattenXeroCreditRefund = (items) => {
       cr.Customer?.CompanyName || cr.Customer?.Name || cr.Customer?.DisplayID
     );
 
-   rows.push({
-      "Customer": cleanNone(cr.Customer?.Name || cr.Customer?.DisplayID),
-      "Date": fmtDate(cr.Date),
-      "Cheque/Refund No": cr.Number || "",
-      "Invoice Number": cr.Invoice?.Number || "",
-      "Bank account": cr.Account?.DisplayID || "",
-      "Bank account Name": cr.Account?.Name || "",
-      "Amount": cr.Amount ?? "",
-      "Payee": cr.Payee || "",
-      "Memo": cr.Memo || "",
-      "Cheque Printed": cr.ChequePrinted ? "Yes" : "No",
-      "Delivery Status": cr.DeliveryStatus || "",
-      "Currency Code": cr.ForeignCurrency?.Code || "AUD",
-      "Customer UID": cr.Customer?.UID || "",
-      "Invoice UID": cr.Invoice?.UID || "",
-      "UID": cr.UID || "",
+    rows.push({
+      "ContactName": contactName,
+      "Date":        fmtDate(cr.Date),
+      "Invoice No":  cr.Invoice?.Number || "",
+      "Amount":      cr.Amount ?? "",
+      "Bank":        cr.Account?.DisplayID || "",
+      "Reference":   cr.Number || cr.Memo || "",
+      "CurrencyRate": 1,
     });
   }
 
