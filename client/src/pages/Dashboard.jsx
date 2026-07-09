@@ -775,7 +775,7 @@ const DATA_TYPES = [
   { key: "bills",           label: "Bills",            subtypes: BILL_SUBTYPES,    color: "#f59e0b" },
   // { key: "creditNotes",     label: "Credit Notes",     subtypes: null,             color: "#10b981" },
   // { key: "vendorCredits",   label: "Vendor Credits",   subtypes: null,             color: "#3b82f6" },
-  { key: "creditRefunds",   label: "Credit Refunds",  subtypes: null,             color: "#d946ef" },
+  { key: "creditRefunds",   label: "Credit Refund",  subtypes: null,             color: "#d946ef" },
   { key: "invoicePayments", label: "Invoice Payments", subtypes: null,             color: "#8b5cf6" },
   { key: "billPayments",    label: "Bill Payments",    subtypes: null,             color: "#ec4899" },
   { key: "banking",         label: "Banking",          subtypes: BANKING_SUBTYPES, color: "#14b8a6", bankingLabels: BANKING_LABELS },
