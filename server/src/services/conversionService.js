@@ -4,6 +4,7 @@ import {
   flattenQBOInvoicePayments,
   flattenQBOInvoiceService,
   flattenQBOCreditRefund,
+  flattenQBOInvoiceTimeBilling,
 } from "./converters/qboInvoices.js";
 
 import {
@@ -19,6 +20,7 @@ import {
   flattenXeroTransfer,
   flattenXeroJournal,
   flattenXeroCreditRefund,
+  flattenXeroInvoiceTimeBilling,
 } from "./converters/xeroInvoices.js";
 
 import {
@@ -38,6 +40,7 @@ import {
   flattenMYOBGeneralJournal,
   flattenMYOBQuote,
   flattenMYOBCreditRefund,
+  flattenMYOBInvoiceTimeBilling,
 } from "./converters/myobRaw.js";
 
 import {
@@ -86,6 +89,7 @@ export const convertToQBO = (items, dataType, subType = null, businessName = "")
       if (subType === "Service") return flattenQBOInvoiceService(items, businessName);
       if (subType === "Professional") return flattenQBOProfMiscInvoice(items, businessName);
       if (subType === "Miscellaneous") return flattenQBOProfMiscInvoice(items, businessName);
+      if (subType === "TimeBilling") return flattenQBOInvoiceTimeBilling(items);
       return flattenMYOBInvoiceService(items, businessName);
 
     case "bills":
@@ -138,6 +142,7 @@ export const convertToXero = (items, dataType, subType = null, businessName = ""
 
   switch (dataType) {
     case "invoices":
+      if (subType === "TimeBilling") return flattenXeroInvoiceTimeBilling(items);
       return flattenXeroInvoices(items, subType, businessName);
 
     case "bills":
@@ -188,6 +193,7 @@ export const convertToMYOBRaw = (items, dataType, subType = null, businessName =
 
   switch (dataType) {
     case "invoices":
+      if (subType === "TimeBilling") return flattenMYOBInvoiceTimeBilling(items, businessName);
       return flattenMYOBInvoiceService(items, businessName);
 
     case "bills":

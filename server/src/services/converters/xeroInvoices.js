@@ -1,6 +1,46 @@
 
 import { cleanNone, fmtDate } from "../helpers.js";
 
+
+// ── Xero Invoice — TimeBilling ─────────────────────────────────
+// Endpoint: /Sale/Invoice/TimeBilling
+export const flattenXeroInvoiceTimeBilling = (invoices) => {
+  const rows = [];
+
+  for (const inv of invoices) {
+    const lines = inv.Lines?.length ? inv.Lines : [{}];
+    const contactName = cleanNone(
+      inv.Customer?.CompanyName || inv.Customer?.Name || inv.Customer?.DisplayID
+    );
+
+    for (const line of lines) {
+      if (line.Type === "Subtotal") continue;
+      const lineAmount = Number(line.Total ?? 0);
+      if (!lineAmount) continue;
+
+      const taxCode = line.TaxCode?.Code || "NONE";
+
+      rows.push({
+        "ContactName": contactName,
+        "InvoiceNumber": inv.Number || "",
+        "InvoiceDate": fmtDate(inv.Date),
+        "DueDate": fmtDate(inv.PromisedDate || inv.Terms?.DueDate),
+        "Description": line.Description || "",
+        "Quantity": line.Hours ?? line.Units ?? 1,
+        "UnitAmount": line.Rate ?? "",
+        "AccountCode": line.Job?.Name || "",
+        "TaxType": taxCode,
+        "LineAmount": lineAmount,
+        "Total": inv.TotalAmount ?? "",
+        "Reference": inv.CustomerPurchaseOrderNumber || "",
+        "CurrencyCode": inv.ForeignCurrency?.Code || "AUD",
+      });
+    }
+  }
+
+  return rows;
+};
+
 export const flattenXeroInvoices = (invoices) => {
 
   const rows = [];
@@ -47,11 +87,11 @@ export const flattenXeroInvoices = (invoices) => {
       const quantity = isService
         ? 1
         : (
-            line.Quantity ??
-            line.ShipQuantity ??
-            line.UnitCount ??
-            1
-          );
+          line.Quantity ??
+          line.ShipQuantity ??
+          line.UnitCount ??
+          1
+        );
 
       // ✅ tax code
       const taxCode =
@@ -99,8 +139,8 @@ export const flattenXeroInvoices = (invoices) => {
       const unitAmount = isService
         ? lineAmount
         : Number(
-            line.UnitPrice ?? 0
-          );
+          line.UnitPrice ?? 0
+        );
 
       // ✅ item code + name concat
       const itemName =
@@ -298,7 +338,7 @@ export const flattenXeroCreditRefund = (items) => {
       cr.Customer?.CompanyName || cr.Customer?.Name || cr.Customer?.DisplayID
     );
 
-   rows.push({
+    rows.push({
       "Customer": cleanNone(cr.Customer?.Name || cr.Customer?.DisplayID),
       "Date": fmtDate(cr.Date),
       "Cheque/Refund No": cr.Number || "",

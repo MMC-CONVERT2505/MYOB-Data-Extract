@@ -755,7 +755,7 @@ const OUTPUT_FORMATS = [
   { value: "xero", label: "Xero" },
 ];
 
-const INVOICE_SUBTYPES = ["Item", "Service", "Professional", "Miscellaneous"];
+const INVOICE_SUBTYPES = ["Item", "Service", "Professional","TimeBilling", "Miscellaneous"];
 const BILL_SUBTYPES = ["Item", "Service", "Professional", "Miscellaneous"];
 const BANKING_SUBTYPES = ["spend", "receive", "transfer",];
 const QUOTE_SUBTYPES = ["Item", "Service", "Professional", "TimeBilling", "Miscellaneous"];
