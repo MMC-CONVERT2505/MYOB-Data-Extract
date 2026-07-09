@@ -23,8 +23,8 @@
 
 
 
-
-
+import { Router } from "express";
+import requireAuth from "../middleware/requireAuth.js";
 import {
   extractData,
   getCreditNotes,
