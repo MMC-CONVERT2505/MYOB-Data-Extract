@@ -1,4 +1,41 @@
 import {
+  flattenReckonCOA,
+  flattenReckonCustomer,
+  flattenReckonSupplier,
+  flattenReckonItem,
+  flattenReckonJob,
+} from "./converters/referenceReckon.js";
+
+import {
+  flattenReckonInvoice,
+  flattenReckonCustomerReturn,
+  flattenReckonCustomerPayment,
+  flattenReckonSpendMoney,
+  flattenReckonReceiveMoney,
+  flattenReckonBankTransfer,
+  flattenReckonJournal,
+} from "./converters/reckonInvoices.js";
+
+import {
+  flattenReckonBills,
+  flattenReckonSupplierReturn,
+  flattenReckonSupplierPayment,
+} from "./converters/reckonBills.js";
+
+import {
+  flattenReckonQuoteItem,
+  flattenReckonQuoteService,
+  flattenReckonSalesOrderItem,
+  flattenReckonSalesOrderService,
+} from "./converters/reckonQuotes.js";
+
+import {
+  flattenReckonPurchaseOrderItem,
+  flattenReckonPurchaseOrderService,
+} from "./converters/reckonPurchaseOrders.js";
+
+
+import {
   flattenQBOInvoiceItems,
   flattenQBOProfMiscInvoice,
   flattenQBOInvoicePayments,
@@ -235,6 +272,59 @@ export const convertToMYOBRaw = (items, dataType, subType = null, businessName =
 
 
 
+    default:
+      return items;
+  }
+};
+
+
+// ── Reckon Converter ────────────────────────────────────────────────────────
+export const convertToReckon = (items, dataType, subType = null, businessName = "") => {
+  if (!items?.length) return [];
+
+  switch (dataType) {
+    case "invoices":
+      return flattenReckonInvoice(items);
+    case "bills":
+      return flattenReckonBills(items);
+
+    case "quotes":
+      if (subType === "Item") return flattenReckonQuoteItem(items);
+      return flattenReckonQuoteService(items); // Service | Professional | Miscellaneous | TimeBilling
+
+    case "salesOrders":
+      if (subType === "Item") return flattenReckonSalesOrderItem(items);
+      return flattenReckonSalesOrderService(items); // Service | Professional | Miscellaneous
+
+    case "purchaseOrders":
+      if (subType === "Item") return flattenReckonPurchaseOrderItem(items);
+      return flattenReckonPurchaseOrderService(items); // Service | Professional | Miscellaneous
+      
+    case "creditNotes":
+      return flattenReckonCustomerReturn(items);
+    case "vendorCredits":
+      return flattenReckonSupplierReturn(items);
+    case "invoicePayments":
+      return flattenReckonCustomerPayment(items);
+    case "billPayments":
+      return flattenReckonSupplierPayment(items);
+    case "banking":
+      if (subType === "spend") return flattenReckonSpendMoney(items);
+      if (subType === "receive") return flattenReckonReceiveMoney(items);
+      if (subType === "transfer") return flattenReckonBankTransfer(items);
+      return items;
+    case "generalJournal":
+      return flattenReckonJournal(items);
+    case "items":
+      return flattenReckonItem(items);
+    case "customers":
+      return flattenReckonCustomer(items);
+    case "suppliers":
+      return flattenReckonSupplier(items);
+    case "accounts":
+      return flattenReckonCOA(items);
+    case "jobs":
+      return flattenReckonJob(items);
     default:
       return items;
   }

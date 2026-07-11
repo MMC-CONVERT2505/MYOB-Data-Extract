@@ -1,6 +1,6 @@
 
 import { myobRequest } from "../services/myobService.js";
-import { convertToQBO, convertToMYOBRaw, convertToXero } from "../services/conversionService.js";
+import { convertToQBO, convertToMYOBRaw, convertToXero, convertToReckon } from "../services/conversionService.js";
 import { getCachedExtraction, saveExtractionWithCache, estimatePayloadSize } from "../services/extractionCacheService.js";
 
 const getAuth = (req) => ({
@@ -145,6 +145,47 @@ export const extractData = async (req, res, next) => {
           break;
         }
 
+        // ── Sales Orders ──────────────────────────────────────
+        // Endpoint: /Sale/Order/{Item|Service|Professional|Miscellaneous}
+        case "salesOrders": {
+          try {
+            const baseEp = subType ? `/Sale/Order/${subType}` : `/Sale/Order`;
+            let allItems = [];
+            let pageUrl = `${baseEp}?$top=1000&$orderby=Date desc`;
+            while (pageUrl) {
+              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
+              const pageItems = data?.Items || [];
+              allItems = allItems.concat(pageItems);
+              if (data?.NextPageLink && pageItems.length > 0) {
+                const u = new URL(data.NextPageLink);
+                const parts = u.pathname.split("/");
+                const bizIdx = parts.indexOf(dbUser.businessId);
+                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
+              } else { pageUrl = null; }
+            }
+            items = allItems.filter(i => {
+              if (!i.Date) return true;
+              const d = i.Date.substring(0, 10);
+              return d >= start && d <= end;
+            });
+            console.log(`✅ ${baseEp} → ${items.length} records (from ${allItems.length} total)`);
+          } catch (soErr) {
+            if (soErr.status === 403 && subType) {
+              console.warn(`⚠️ /Sale/Order/${subType} 403, falling back to generic`);
+              try {
+                const fallback = await myobRequest(dbUser, userId, "GET", `/Sale/Order?$top=1000&$orderby=Date desc`);
+                const all = fallback?.Items || [];
+                items = all.filter(i => {
+                  if (!i.Date) return true;
+                  const d = i.Date.substring(0, 10);
+                  return d >= start && d <= end;
+                });
+              } catch (fe) { throw fe; }
+            } else { throw soErr; }
+          }
+          break;
+        }
+
         // ── Bills ─────────────────────────────────────────────
         case "bills": {
           try {
@@ -181,6 +222,47 @@ export const extractData = async (req, res, next) => {
                 });
               } catch (fe) { throw fe; }
             } else { throw billErr; }
+          }
+          break;
+        }
+
+        // ── Purchase Orders ─────────────────────────────────────
+        // Endpoint: /Purchase/Order/{Item|Service|Professional|Miscellaneous}
+        case "purchaseOrders": {
+          try {
+            const baseEp = subType ? `/Purchase/Order/${subType}` : `/Purchase/Order`;
+            let allItems = [];
+            let pageUrl = `${baseEp}?$top=1000&$orderby=Date desc`;
+            while (pageUrl) {
+              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
+              const pageItems = data?.Items || [];
+              allItems = allItems.concat(pageItems);
+              if (data?.NextPageLink && pageItems.length > 0) {
+                const u = new URL(data.NextPageLink);
+                const parts = u.pathname.split("/");
+                const bizIdx = parts.indexOf(dbUser.businessId);
+                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
+              } else { pageUrl = null; }
+            }
+            items = allItems.filter(i => {
+              if (!i.Date) return true;
+              const d = i.Date.substring(0, 10);
+              return d >= start && d <= end;
+            });
+            console.log(`✅ ${baseEp} → ${items.length} records (from ${allItems.length} total)`);
+          } catch (poErr) {
+            if (poErr.status === 403 && subType) {
+              console.warn(`⚠️ /Purchase/Order/${subType} 403, falling back to generic`);
+              try {
+                const fallback = await myobRequest(dbUser, userId, "GET", `/Purchase/Order?$top=1000&$orderby=Date desc`);
+                const all = fallback?.Items || [];
+                items = all.filter(i => {
+                  if (!i.Date) return true;
+                  const d = i.Date.substring(0, 10);
+                  return d >= start && d <= end;
+                });
+              } catch (fe) { throw fe; }
+            } else { throw poErr; }
           }
           break;
         }
@@ -716,6 +798,7 @@ export const extractData = async (req, res, next) => {
     let converted = null;
     if (outputFormat === "qbo") converted = convertToQBO(items, dataType, subType || null, businessName);
     if (outputFormat === "xero") converted = convertToXero(items, dataType, subType || null, businessName);
+    if (outputFormat === "reckon") converted = convertToReckon(items, dataType, subType || null, businessName);
 
     const responseItems = outputFormat === "raw" ? myobFlat : (converted || myobFlat);
 
