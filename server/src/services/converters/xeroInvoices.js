@@ -241,6 +241,8 @@ export const flattenXeroInvoices = (invoices) => {
 
         "Exchange Rate":
           inv.CurrencyExchangeRate ?? 1,
+
+        "UID": inv?.UID,
       });
     }
   }
@@ -321,6 +323,8 @@ export const flattenXeroInvoicePayments = (payments) => {
           "",
 
         "CurrencyRate": p.CurrencyExchangeRate ?? 1,
+
+        "UID" : p?.UID,
       });
     }
   }
@@ -554,6 +558,8 @@ export const flattenXeroSpendReceive = (items, subType) => {
 
         "Line Amount Type":
           txn.IsTaxInclusive ? "Tax Inclusive" : "Tax Exclusive",
+
+        "UID": txn?.UID,
       });
     }
   }

@@ -346,6 +346,51 @@ export const extractData = async (req, res, next) => {
           break;
         }
 
+        // ── Debit Refunds (Purchase/DebitRefund) ───────────────
+        case "debitRefunds": {
+          const drEndpoints = [
+            `/Purchase/DebitRefund?$top=1000&$filter=${encodeURIComponent(dateFilter)}&$orderby=Date desc`,
+            `/Purchase/DebitRefund?$top=1000&$orderby=Date desc`,
+            `/Purchase/DebitRefund`,
+          ];
+          let drFetched = false;
+          for (const ep of drEndpoints) {
+            try {
+              let allItems = [];
+              let pageUrl = ep;
+              while (pageUrl) {
+                const data = await myobRequest(dbUser, userId, "GET", pageUrl);
+                const pageItems = data?.Items || [];
+                allItems = allItems.concat(pageItems);
+                if (data?.NextPageLink && pageItems.length > 0) {
+                  const u = new URL(data.NextPageLink);
+                  const parts = u.pathname.split("/");
+                  const bizIdx = parts.indexOf(dbUser.businessId);
+                  pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
+                } else { pageUrl = null; }
+              }
+              items = ep.includes("filter")
+                ? allItems
+                : allItems.filter(i => {
+                  if (!i.Date) return true;
+                  const d = i.Date.substring(0, 10);
+                  return d >= start && d <= end;
+                });
+              console.log(`✅ ${ep.split("?")[0]} → ${items.length} records`);
+              drFetched = true;
+              break;
+            } catch (err) {
+              if (err.status === 400 || err.status === 404) {
+                console.warn(`⚠️ ${ep.split("?")[0]} returned ${err.status}, trying next...`);
+                continue;
+              }
+              throw err;
+            }
+          }
+          if (!drFetched) { console.warn("⚠️ Debit Refunds not available"); items = []; }
+          break;
+        }
+
         // ── Vendor Credits ────────────────────────────────────
         case "vendorCredits": {
           const vcEndpoints = [

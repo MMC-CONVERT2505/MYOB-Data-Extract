@@ -227,6 +227,8 @@ export const flattenQBOInvoiceItems = (invoices) => {
 
         "Freight ($)":
           inv.Freight ?? "",
+
+        "UID" : inv?.UID 
       });
     }
   }
@@ -360,6 +362,8 @@ export const flattenQBOInvoiceService = (invoices) => {
 
         "Location":
           "",
+
+        "UID": inv?.UID,
       });
     }
   }
@@ -427,6 +431,7 @@ export const flattenQBOInvoicePayments = (payments) => {
         "Memo": safe(p.Memo),
         "Currency Code": p.ForeignCurrency?.Code || "AUD",
         "Exchange Rate": p.CurrencyExchangeRate ?? 1,
+        "UID": p?.UID,
       });
     }
   }

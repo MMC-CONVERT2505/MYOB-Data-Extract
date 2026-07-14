@@ -72,6 +72,7 @@ export const flattenReckonInvoice = (invoices) => {
         "Tax amount ($)":    Number(l.taxAmount.toFixed(2)),
         "Job No.":           l.jobNo,
         "Job name":          l.jobName,
+        "UID":               inv?.UID
       });
     }
   }
@@ -117,6 +118,7 @@ export const flattenReckonCustomerPayment = (payments) => {
         "Description of transaction": p.Memo || "",
         "Invoice number":             inv.Number || "",
         "Amount received":            inv.AmountApplied ?? p.AmountReceived ?? "",
+        "UID" :                       p?.UID,
       });
     }
   }
@@ -145,6 +147,7 @@ export const flattenReckonSpendMoney = (items) => {
         "Description":                 line.Memo || "",
         "Job":                         line.Job?.Name || "",
         "Tax Code":                    line.TaxCode?.Code || "",
+        "UID":                         txn?.UID,
       });
     }
   }
@@ -173,6 +176,7 @@ export const flattenReckonReceiveMoney = (items) => {
         "Line_Description":   line.Memo || "",
         "Job":                line.Job?.Name || "",
         "Tax Code":           line.TaxCode?.Code || "",
+        "UID":                txn?.UID,
       });
     }
   }

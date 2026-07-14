@@ -34,8 +34,9 @@ const REFERENCE_TYPES = new Set([
 const DATA_TYPES = [
   { key: "invoices",        label: "Invoices",         subtypes: INVOICE_SUBTYPES, color: "#6366f1" },
   { key: "bills",           label: "Bills",            subtypes: BILL_SUBTYPES,    color: "#f59e0b" },
-  // { key: "creditNotes",     label: "Credit Notes",     subtypes: null,             color: "#10b981" },
-  // { key: "vendorCredits",   label: "Vendor Credits",   subtypes: null,             color: "#3b82f6" },
+  { key: "creditNotes",     label: "Credit Notes",     subtypes: null,             color: "#10b981" },
+  { key: "vendorCredits",   label: "Vendor Credits",   subtypes: null,             color: "#3b82f6" },
+  { key: "debitRefunds",    label: "Debit Refunds",   subtypes: null,             color: "#c026d3" },
   { key: "creditRefunds",   label: "Credit Refund",  subtypes: null,               color: "#d946ef" },
   { key: "invoicePayments", label: "Invoice Payments", subtypes: null,             color: "#8b5cf6" },
   { key: "billPayments",    label: "Bill Payments",    subtypes: null,             color: "#ec4899" },

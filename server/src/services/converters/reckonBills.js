@@ -69,6 +69,7 @@ export const flattenReckonBills = (bills) => {
         "Tax amount ($)":          Number(l.taxAmount.toFixed(2)),
         "Job No.":                 l.jobNo,
         "Job name":                l.jobName,
+        "UID":                     bill?.UID,
       });
     }
   }
@@ -76,29 +77,40 @@ export const flattenReckonBills = (bills) => {
 };
 
 // ── 2. Vendor Credits → "Supplier return" sheet ──────────────────
-// Endpoint: /Purchase/DebitSettlement — a settlement record, NOT a
-// line-itemised document, so Item/Account/Qty columns stay blank.
-export const flattenReckonSupplierReturn = (items) =>
-  items.map((vc) => ({
-    "Bill number":             vc.Number || "",
-    "Supplier":                cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName),
-    "Transaction date":        fmtDate(vc.Date),
-    "Due date":                "",
-    "Supplier invoice number": "",
-    "Amounts are":             "Tax exclusive",
-    "Item":                    "",
-    "Description":             vc.Memo || "",
-    "Account No.":             vc.Account?.DisplayID || "",
-    "No. of Unit":             -1,
-    "Unit Price":              Math.abs(Number(vc.Amount ?? 0)),
-    "Discount %":              "",
-    "Amount ($)":              -Math.abs(Number(vc.Amount ?? 0)),
-    "Tax code":                "",
-    "Tax amount ($)":          "",
-    "Job No.":                 "",
-    "Job name":                "",
-  }));
-
+// Endpoint: /Purchase/DebitSettlement — a settlement record: each
+// credit is applied against one or more bills via Lines[].Purchase +
+// AmountApplied. There is no Item/Account/Qty/Tax detail on this
+// endpoint, so those columns stay blank; one row is produced per
+// applied bill (a credit split across multiple bills → multiple rows).
+export const flattenReckonSupplierReturn = (items) => {
+  const rows = [];
+  for (const vc of items) {
+    const lines = vc.Lines?.length ? vc.Lines : [{}];
+    for (const line of lines) {
+      const appliedAmount = Number(line.AmountApplied ?? vc.Amount ?? vc.DebitAmount ?? 0);
+      rows.push({
+        "Bill number":             line.Purchase?.Number || vc.Bill?.Number || "",
+        "Supplier":                cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName),
+        "Transaction date":        fmtDate(vc.Date),
+        "Due date":                "",
+        "Supplier invoice number": vc.Number || "",
+        "Amounts are":             "Tax exclusive",
+        "Item":                    "",
+        "Description":             vc.Memo || "",
+        "Account No.":             "",
+        "No. of Unit":             -1,
+        "Unit Price":              Math.abs(appliedAmount),
+        "Discount %":              "",
+        "Amount ($)":              -Math.abs(appliedAmount),
+        "Tax code":                "",
+        "Tax amount ($)":          "",
+        "Job No.":                 "",
+        "Job name":                "",
+      });
+    }
+  }
+  return rows;
+};
 // ── 3. Bill Payments → "Supplier Payment" sheet ──────────────────
 // Endpoint: /Purchase/Bill/Payment
 export const flattenReckonSupplierPayment = (payments) => {
@@ -114,6 +126,7 @@ export const flattenReckonSupplierPayment = (payments) => {
         "Description of transaction": p.Memo || "",
         "Bill Number":                line.Purchase?.Number || line.Number || line.BillNumber || "",
         "Amount Paid":                line.AmountApplied ?? line.Amount ?? p.AmountPaid ?? "",
+        "UID":                        p?.UID,
       });
     }
   }

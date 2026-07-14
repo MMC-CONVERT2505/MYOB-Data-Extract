@@ -730,6 +730,9 @@ export const flattenMYOBInvoicePayment = (payments) => {
           inv.AmountApplied ||
           p.AmountReceived ||
           "",
+
+       "Invoice UID":
+          inv.UID || "",
       });
 
     }
@@ -753,74 +756,8 @@ export const flattenMYOBBillPayment = (payments) => {
 
     for (const line of lines) {
 
-      // rows.push({
-
-      //   // ───── TEMPLATE FIELDS ─────
-
-      //   "Date":
-      //     fmtDate(p.Date),
-
-      //   "Contact":
-      //     cleanNone(
-      //       p.Supplier?.Name ||
-      //       p.Supplier?.CompanyName
-      //     ),
-
-      //   "Reference":
-      //     p.PaymentNumber || "",
-
-      //   "Bank account":
-      //     p.Account?.DisplayID || "",
-
-      //   "Bank account Name":
-      //     p.Account?.Name || "",
-
-      //   "AmountPaidForeign":
-      //     p?.AmountPaidForeign,
-
-      //   "ForeignCurrency":
-      //     p?.ForeignCurrency?.Code,
-
-      //   "CurrencyExchangeRate":
-      //     p?.CurrencyExchangeRate,
-
-
-      //   "Amount":
-      //     line.AmountApplied ??
-      //     line.Amount ??
-      //     p.AmountPaid ??
-      //     "",
-
-      //   "AmountAppliedForeign": 
-      //     line?.AmountAppliedForeign,
-
-      //   "Details":
-      //     p.Memo || "",
-
-      //   "Allocation notes":
-      //     line.Description || "",
-
-      //   "Bill Number":
-      //     line.Purchase?.Number ||
-      //     line.Number ||
-      //     line.BillNumber ||
-      //     "",
-
-      //   // ✅ added Bill UID at last
-      //   "Bill UID":
-      //     line.Purchase?.UID ||
-      //     line.UID ||
-      //     "",
-      // });
-
-
       rows.push({
         // ───── TEMPLATE FIELDS ─────
-
-        "Bill UID":
-          line.Purchase?.UID ||
-          line.UID ||
-          "",
 
         "Date":
           fmtDate(p.Date),
@@ -869,6 +806,10 @@ export const flattenMYOBBillPayment = (payments) => {
           line.Amount ??
           p.AmountPaid ??
           "",
+
+        "Bill UID":
+          p?.UID ||
+          "",
       });
     }
   }
@@ -902,6 +843,60 @@ export const flattenMYOBCreditRefund = (items) => {
     });
   }
 
+  return rows;
+};
+
+// ── MYOB Vendor Credit — raw flat ──────────────────────────────
+// Endpoint: /Purchase/DebitSettlement
+// NOTE: this is a settlement record — Lines only contain a Bill
+// reference + AmountApplied, there is no Item/Account/Qty detail.
+export const flattenMYOBVendorCredit = (items) => {
+  const rows = [];
+  for (const vc of items) {
+    const lines = vc.Lines?.length ? vc.Lines : [{}];
+    for (const line of lines) {
+      rows.push({
+        "Supplier": cleanNone(vc.Supplier?.Name || vc.Supplier?.DisplayID),
+        "Number": vc.Number || "",
+        "Date": fmtDate(vc.Date),
+        "Debit Amount": vc.Amount ?? vc.DebitAmount ?? "",
+        "Memo": vc.Memo || "",
+        "Debit From Bill No": vc.Bill?.Number || "",
+        "Bill No (applied)": line.Purchase?.Number || "",
+        "Amount Applied": line.AmountApplied ?? "",
+        "Currency Code": vc.ForeignCurrency?.Code || "AUD",
+        "Supplier UID": vc.Supplier?.UID || "",
+        "Bill UID": vc.Bill?.UID || "",
+        "Applied Bill UID": line.Purchase?.UID || "",
+        "UID": vc.UID || "",
+      });
+    }
+  }
+  return rows;
+};
+
+// ── MYOB Debit Refund — raw flat ───────────────────────────────
+// Endpoint: /Purchase/DebitRefund
+export const flattenMYOBDebitRefund = (items) => {
+  const rows = [];
+  for (const dr of items) {
+    rows.push({
+      "Supplier": cleanNone(dr.Supplier?.Name || dr.Supplier?.DisplayID),
+      "Date": fmtDate(dr.Date),
+      "Cheque/Refund No": dr.Number || "",
+      "Bill Number": dr.Bill?.Number || "",
+      "Bank account": dr.Account?.DisplayID || "",
+      "Bank account Name": dr.Account?.Name || "",
+      "Amount": dr.Amount ?? "",
+      "Payment Method": dr.PaymentMethod || "",
+      "Memo": dr.Memo || "",
+      "Deposit To": dr.DepositTo || "",
+      "Currency Code": dr.ForeignCurrency?.Code || "AUD",
+      "Supplier UID": dr.Supplier?.UID || "",
+      "Bill UID": dr.Bill?.UID || "",
+      "UID": dr.UID || "",
+    });
+  }
   return rows;
 };
 
@@ -1193,6 +1188,9 @@ export const flattenMYOBReceiveMoneyQBO = (items) => {
 
         "Linked Transaction Number":
           "",
+
+        "UID":
+          txn?.UID,
 
       });
     }

@@ -48,6 +48,8 @@ import {
   flattenQBOBillItems,
   flattenQBOBillPayments,
   flattenQBOBillService,
+  flattenQBOVendorCredit,
+  flattenQBODebitRefund,
 } from "./converters/qboBills.js";
 
 import {
@@ -63,6 +65,8 @@ import {
 import {
   flattenXeroBills,
   flattenXeroBillPayments,
+  flattenXeroVendorCredit,
+  flattenXeroDebitRefund,
 } from "./converters/xeroBills.js";
 
 import {
@@ -78,6 +82,8 @@ import {
   flattenMYOBQuote,
   flattenMYOBCreditRefund,
   flattenMYOBInvoiceTimeBilling,
+  flattenMYOBVendorCredit,
+  flattenMYOBDebitRefund,
 } from "./converters/myobRaw.js";
 
 import {
@@ -142,6 +148,12 @@ export const convertToQBO = (items, dataType, subType = null, businessName = "")
     case "creditRefunds":
       return flattenQBOCreditRefund(items);
 
+       case "vendorCredits":
+      return flattenQBOVendorCredit(items);
+
+    case "debitRefunds":
+      return flattenQBODebitRefund(items);
+
     case "banking":
       if (subType === "spend") return flattenMYOBSpendMoneyQBO(items);
       if (subType === "receive") return flattenMYOBReceiveMoneyQBO(items);
@@ -194,6 +206,12 @@ export const convertToXero = (items, dataType, subType = null, businessName = ""
     case "creditRefunds":
       return flattenXeroCreditRefund(items);
 
+         case "vendorCredits":
+      return flattenXeroVendorCredit(items);
+
+    case "debitRefunds":
+      return flattenXeroDebitRefund(items);
+
     case "banking":
       if (subType === "spend" || subType === "receive") return flattenXeroSpendReceive(items, subType);
       if (subType === "transfer") return flattenXeroTransfer(items);
@@ -244,6 +262,12 @@ export const convertToMYOBRaw = (items, dataType, subType = null, businessName =
 
     case "creditRefunds":
       return flattenMYOBCreditRefund(items);
+
+          case "vendorCredits":
+      return flattenMYOBVendorCredit(items);
+
+    case "debitRefunds":
+      return flattenMYOBDebitRefund(items);
 
     case "banking":
       if (subType === "spend") return flattenMYOBSpendMoneyRaw(items);
@@ -299,7 +323,7 @@ export const convertToReckon = (items, dataType, subType = null, businessName = 
     case "purchaseOrders":
       if (subType === "Item") return flattenReckonPurchaseOrderItem(items);
       return flattenReckonPurchaseOrderService(items); // Service | Professional | Miscellaneous
-      
+
     case "creditNotes":
       return flattenReckonCustomerReturn(items);
     case "vendorCredits":

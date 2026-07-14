@@ -260,6 +260,9 @@ export const flattenQBOBillItems = (bills, subType) => {
           bill.CustomerPurchaseOrderNumber || "",
         "Location":
           "",
+
+        "UID":
+          bill?.UID,
       });
     }
   }
@@ -396,6 +399,9 @@ export const flattenQBOBillService = (bills) => {
 
         "SupplierInvoiceNumber":
           bill.SupplierInvoiceNumber || "",
+
+        "UID":
+          bill?.UID,
       });
     }
   }
@@ -428,6 +434,7 @@ export const flattenQBOBillPayments = (payments) => {
         "Currency Code": p.ForeignCurrency?.Code || "AUD",
         "Exchange Rate": p.CurrencyExchangeRate ?? 1,
         "Print Status": safe(p.DeliveryStatus),
+        "UID": p?.UID
       });
     }
   }
@@ -466,20 +473,49 @@ export const flattenQBOCreditNotes = (creditNotes) => {
   return rows;
 };
 
-// ── QBO Vendor Credits — 11 columns ──────────────────────────
-export const convertVendorCreditToQBO = (vc) => {
-  const lines = vc.Lines?.length ? vc.Lines : [{}];
-  return lines.map(line => ({
-    "Ref No": vc.SupplierInvoiceNumber || vc.Number || "",
-    "Vendor": cleanNone(vc.Supplier?.CompanyName || vc.Supplier?.Name || vc.Supplier?.DisplayID),
-    "Payment Date": fmtDate(vc.Date),
-    "Global Tax Calculation": vc.IsTaxInclusive ? "Tax Inclusive" : "Tax Exclusive",
-    "Expense Account": [line.Account?.DisplayID, line.Account?.Name].filter(Boolean).join(" "),
-    "Expense Description": line.Description || "",
-    "Expense Line Amount": line.Total ?? line.Amount ?? "",
-    "Expense Tax Code": line.TaxCode?.Code || "",
-    "Location": line.Location?.Name || "",
-    "Currency Code": vc.ForeignCurrency?.Code || "AUD",
-    "Exchange Rate": vc.CurrencyExchangeRate ?? 1,
-  }));
+// ── QBO Vendor Credits ───────────────────────────────────────
+// Endpoint: /Purchase/DebitSettlement
+// NOTE: settlement record — one row per Bill this credit was applied to.
+export const flattenQBOVendorCredit = (items) => {
+  // remove this line — was only for debugging, and had args backwards anyway
+  // console.log(JSON.stringify(items, 2, null))
+  const rows = [];
+  for (const vc of items) {
+    const lines = vc.Lines?.length ? vc.Lines : [{}];
+    for (const line of lines) {
+      rows.push({
+        "UID":                 vc.UID || "",
+        "DebitFromBill_Credit": vc?.DebitFromBill?.Number || "",   // ✅ confirmed correct
+        "Supplier":            cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName || vc.Supplier?.DisplayID),
+        "Number":              vc.Number || "",
+        "Date":                fmtDate(vc.Date),
+        "DebitAmount":         vc.Amount ?? vc.DebitAmount ?? "",   // ✅ correct — header total, one per credit
+        "Memo":                vc.Memo || "",
+        "Bill Id":             line.Purchase?.Number || "",        // ✅ correct — per-line bill reference
+        "AmountApplied":       line.AmountApplied ?? "",           // ✅ correct — per-line applied amount
+        "ForeignCurrency":     vc.ForeignCurrency?.Code || "",
+      });
+    }
+  }
+  return rows;
+};
+
+// ── QBO Debit Refund ─────────────────────────────────────────
+// Endpoint: /Purchase/DebitRefund
+export const flattenQBODebitRefund = (items) => {
+  const rows = [];
+  for (const dr of items) {
+    rows.push({
+      "Refund Date":   fmtDate(dr.Date),
+      "Reference No":  safe(dr.Number),
+      "Supplier":      cleanNone(dr.Supplier?.Name || dr.Supplier?.CompanyName),
+      "Bill No":       safe(dr.Bill?.Number),
+      "Bank Account":  safe(dr.Account?.DisplayID),
+      "Amount":        safe(dr.Amount),
+      "Payment Method": safe(dr.PaymentMethod),
+      "Memo":          safe(dr.Memo),
+      "Currency Code": dr.ForeignCurrency?.Code || "AUD",
+    });
+  }
+  return rows;
 };

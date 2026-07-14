@@ -185,6 +185,8 @@ export const flattenXeroBills = (bills, subType) => {
 
         "Exchange Rate":
           bill.CurrencyExchangeRate ?? 1,
+
+        "UID": bill?.UID,
       });
     }
   }
@@ -241,9 +243,60 @@ export const flattenXeroBillPayments = (payments) => {
         "Reference": p.PaymentNumber || p.Memo || "",
 
         "CurrencyRate": p.CurrencyExchangeRate ?? 1,
+
+        "UID": p?.UID,
       });
     }
   }
 
+  return rows;
+};
+
+// ── Xero Vendor Credits ───────────────────────────────────────
+// Endpoint: /Purchase/DebitSettlement
+// NOTE: settlement record — one row per Bill this credit was applied to.
+export const flattenXeroVendorCredit = (items) => {
+  const rows = [];
+  for (const vc of items) {
+    const lines = vc.Lines?.length ? vc.Lines : [{}];
+    const contactName = cleanNone(
+      vc.Supplier?.CompanyName || vc.Supplier?.Name || vc.Supplier?.DisplayID
+    );
+
+    for (const line of lines) {
+      rows.push({
+        "ContactName":    contactName,
+        "CreditNoteNumber": vc.Number || "",
+        "Date":           fmtDate(vc.Date),
+        "BillNumber":     line.Purchase?.Number || "",
+        "AppliedAmount":  line.AmountApplied ?? "",
+        "TotalAmount":    vc.Amount ?? vc.DebitAmount ?? "",
+        "Reference":      vc.Memo || "",
+        "CurrencyCode":   vc.ForeignCurrency?.Code || "AUD",
+      });
+    }
+  }
+  return rows;
+};
+
+// ── Xero Debit Refund ─────────────────────────────────────────
+// Endpoint: /Purchase/DebitRefund
+export const flattenXeroDebitRefund = (items) => {
+  const rows = [];
+  for (const dr of items) {
+    const contactName = cleanNone(
+      dr.Supplier?.CompanyName || dr.Supplier?.Name || dr.Supplier?.DisplayID
+    );
+
+    rows.push({
+      "ContactName": contactName,
+      "Date":        fmtDate(dr.Date),
+      "BillNumber":  dr.Bill?.Number || "",
+      "Amount":      dr.Amount ?? "",
+      "Bank":        dr.Account?.DisplayID || "",
+      "Reference":   dr.Number || dr.Memo || "",
+      "CurrencyCode": dr.ForeignCurrency?.Code || "AUD",
+    });
+  }
   return rows;
 };
