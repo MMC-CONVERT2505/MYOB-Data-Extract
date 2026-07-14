@@ -62,6 +62,9 @@ export const flattenMYOBItems = (items) =>
     "SALE ACCOUNT":
       i.IncomeAccount?.DisplayID,
 
+    "Purchase Account":
+      i.ExpenseAccount?.DisplayID,
+
     "SALE DESCRIPTION":
       safe(
         i.Description ||
