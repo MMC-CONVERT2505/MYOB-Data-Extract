@@ -917,3 +917,14 @@ export const getCreditRefunds = async (req, res, next) => {
     res.json(data);
   } catch (err) { next(err); }
 };
+
+// ── GET /api/extract/debit-refunds ───────────────────────────
+export const getDebitRefunds = async (req, res, next) => {
+  try {
+    const { dbUser, userId } = getAuth(req);
+    const { top = 200, skip = 0 } = req.query;
+    const data = await myobRequest(dbUser, userId, "GET",
+      `/Purchase/DebitRefund?$top=${top}&$skip=${skip}&$orderby=Date desc`);
+    res.json(data);
+  } catch (err) { next(err); }
+};
