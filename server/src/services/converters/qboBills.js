@@ -448,25 +448,16 @@ export const flattenQBOCreditNotes = (creditNotes) => {
     const lines = cn.Lines?.length ? cn.Lines : [{}];
     for (const line of lines) {
       rows.push({
-        "Adjustment Note No": cn.Number || "",
-        "Invoice Date": fmtDate(cn.Date),
-        "Invoice No": cn.AppliedToInvoice?.Number || "",
-        "Customer": cleanNone(cn.Customer?.CompanyName || cn.Customer?.DisplayID || cn.Customer?.Name),
-        "Adjustment Note Date": fmtDate(cn.Date),
-        "Global Tax calculation": "Tax Exclusive",
-        "Product/Service": line.Item?.Number || line.Item?.Name || "",
-        "Product/Service Description": line.Description || "",
-        "Product/Service Quantity": line.Quantity ?? "",
-        "Product/Service Unit Price": line.UnitPrice ?? "",
-        "Product/Service Tax Rate": line.TaxCode?.Code || "",
-        "Product/Service Tax Amount": line.TaxAmount ?? "",
-        "Tax Amount": line.TaxAmount ?? "",
-        "Product/Service Class": line.Category?.Name || "",
-        "Currency Code": cn.ForeignCurrency?.Code || "AUD",
-        "Exchange Rate": cn.CurrencyExchangeRate ?? 1,
-        "Location": "",
-        "Print Status": cn.InvoiceDeliveryStatus || "",
-        "Email Status": cn.InvoiceDeliveryStatus || "",
+        "UID":                cn.UID || "",
+        "CreditFromInvoice":  cn.CreditFromInvoice?.Number || "",
+        "Customer":           cleanNone(cn.Customer?.Name || cn.Customer?.CompanyName || cn.Customer?.DisplayID),
+        "Number":             cn.Number || "",
+        "Date":               fmtDate(cn.Date),
+        "CreditAmount":       cn.Amount ?? cn.CreditAmount ?? "",
+        "Memo":               cn.Memo || "",
+        "Invoice Id":         line.Sale?.Number || line.Invoice?.Number || "",
+        "AmountApplied":      line.AmountApplied ?? "",
+        "ForeignCurrency":    cn.ForeignCurrency?.Code || "",
       });
     }
   }

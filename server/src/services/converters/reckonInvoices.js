@@ -79,29 +79,28 @@ export const flattenReckonInvoice = (invoices) => {
   return rows;
 };
 
-// ── 2. Credit Notes → "Customer return" sheet ───────────────────
-// Endpoint: /Sale/CreditSettlement — a settlement record, NOT a
-// line-itemised document, so Item/Account/Qty columns stay blank.
-export const flattenReckonCustomerReturn = (items) =>
-  items.map((cn) => ({
-    "Invoice number":   cn.Number || "",
-    "Customer":         cleanNone(cn.Customer?.Name),
-    "Transaction date": fmtDate(cn.Date),
-    "Due date":         "",
-    "Customer PO No.":  "",
-    "Amounts are":      "Tax exclusive",
-    "Item":             "",
-    "Description":      cn.Memo || "",
-    "Account No.":      cn.Account?.DisplayID || "",
-    "No. of Unit":      -1,
-    "Unit Price":       Math.abs(Number(cn.Amount ?? 0)),
-    "Discount %":       "",
-    "Amount ($)":       -Math.abs(Number(cn.Amount ?? 0)),
-    "Tax code":         "",
-    "Tax amount ($)":   "",
-    "Job No.":          "",
-    "Job name":         "",
-  }));
+export const flattenMYOBCreditNote = (creditNotes) => {
+  const rows = [];
+  for (const cn of creditNotes) {
+    const lines = cn.Lines?.length ? cn.Lines : [{}];
+    for (const line of lines) {
+      rows.push({
+        "UID":                cn.UID || "",
+        "CreditFromInvoice":  cn.CreditFromInvoice?.Number || "",
+        "Customer":           cleanNone(cn.Customer?.Name || cn.Customer?.CompanyName || cn.Customer?.DisplayID),
+        "Number":             cn.Number || "",
+        "Date":               fmtDate(cn.Date),
+        "CreditAmount":       cn.Amount ?? cn.CreditAmount ?? "",
+        "Memo":               cn.Memo || "",
+        "Invoice Id":         line.Sale?.Number || line.Invoice?.Number || "",
+        "AmountApplied":      line.AmountApplied ?? "",
+        "ForeignCurrency":    cn.ForeignCurrency?.Code || "",
+      });
+    }
+  }
+  return rows;
+};
+
 
 // ── 3. Invoice Payments → "Customer payment" sheet ───────────────
 // Endpoint: /Sale/Invoice/Payment

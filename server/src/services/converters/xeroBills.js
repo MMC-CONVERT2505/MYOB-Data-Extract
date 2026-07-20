@@ -252,6 +252,28 @@ export const flattenXeroBillPayments = (payments) => {
   return rows;
 };
 
+export const flattenXEROCreditNote = (creditNotes) => {
+  const rows = [];
+  for (const cn of creditNotes) {
+    const lines = cn.Lines?.length ? cn.Lines : [{}];
+    for (const line of lines) {
+      rows.push({
+        "UID":                cn.UID || "",
+        "CreditFromInvoice":  cn.CreditFromInvoice?.Number || "",
+        "Customer":           cleanNone(cn.Customer?.Name || cn.Customer?.CompanyName || cn.Customer?.DisplayID),
+        "Number":             cn.Number || "",
+        "Date":               fmtDate(cn.Date),
+        "CreditAmount":       cn.Amount ?? cn.CreditAmount ?? "",
+        "Memo":               cn.Memo || "",
+        "Invoice Id":         line.Sale?.Number || line.Invoice?.Number || "",
+        "AmountApplied":      line.AmountApplied ?? "",
+        "ForeignCurrency":    cn.ForeignCurrency?.Code || "",
+      });
+    }
+  }
+  return rows;
+};
+
 // ── Xero Vendor Credits ───────────────────────────────────────
 // Endpoint: /Purchase/DebitSettlement
 // NOTE: settlement record — one row per Bill this credit was applied to.

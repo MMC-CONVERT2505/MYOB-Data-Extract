@@ -277,16 +277,27 @@ export const extractData = async (req, res, next) => {
           let cnFetched = false;
           for (const ep of cnEndpoints) {
             try {
-              const data = await myobRequest(dbUser, userId, "GET", ep);
-              const all = data?.Items || [];
+              let allItems = [];
+              let pageUrl = ep;
+              while (pageUrl) {
+                const data = await myobRequest(dbUser, userId, "GET", pageUrl);
+                const pageItems = data?.Items || [];
+                allItems = allItems.concat(pageItems);
+                if (data?.NextPageLink && pageItems.length > 0) {
+                  const u = new URL(data.NextPageLink);
+                  const parts = u.pathname.split("/");
+                  const bizIdx = parts.indexOf(dbUser.businessId);
+                  pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
+                } else { pageUrl = null; }
+              }
               items = ep.includes("filter")
-                ? all
-                : all.filter(i => {
+                ? allItems
+                : allItems.filter(i => {
                   if (!i.Date) return true;
                   const d = i.Date.substring(0, 10);
                   return d >= start && d <= end;
                 });
-              console.log(`✅ ${ep.split("?")[0]} → ${items.length} records`);
+              console.log(`✅ ${ep.split("?")[0]} → ${items.length} records (from ${allItems.length} total)`);
               cnFetched = true;
               break;
             } catch (err) {

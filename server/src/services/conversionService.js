@@ -8,12 +8,12 @@ import {
 
 import {
   flattenReckonInvoice,
-  flattenReckonCustomerReturn,
   flattenReckonCustomerPayment,
   flattenReckonSpendMoney,
   flattenReckonReceiveMoney,
   flattenReckonBankTransfer,
   flattenReckonJournal,
+  flattenMYOBCreditNote,
 } from "./converters/reckonInvoices.js";
 
 import {
@@ -50,6 +50,7 @@ import {
   flattenQBOBillService,
   flattenQBOVendorCredit,
   flattenQBODebitRefund,
+  flattenQBOCreditNotes,
 } from "./converters/qboBills.js";
 
 import {
@@ -67,6 +68,7 @@ import {
   flattenXeroBillPayments,
   flattenXeroVendorCredit,
   flattenXeroDebitRefund,
+  flattenXEROCreditNote,
 } from "./converters/xeroBills.js";
 
 import {
@@ -145,6 +147,9 @@ export const convertToQBO = (items, dataType, subType = null, businessName = "")
     case "billPayments":
       return flattenQBOBillPayments(items, businessName);
 
+    case "creditNotes":
+      return  flattenQBOCreditNotes(items)
+
     case "creditRefunds":
       return flattenQBOCreditRefund(items);
 
@@ -203,10 +208,13 @@ export const convertToXero = (items, dataType, subType = null, businessName = ""
     case "billPayments":
       return flattenXeroBillPayments(items, businessName);
 
+    case "creditNotes":
+      return  flattenXEROCreditNote(items)
+
     case "creditRefunds":
       return flattenXeroCreditRefund(items);
-
-         case "vendorCredits":
+      
+    case "vendorCredits":
       return flattenXeroVendorCredit(items);
 
     case "debitRefunds":
@@ -325,7 +333,7 @@ export const convertToReckon = (items, dataType, subType = null, businessName = 
       return flattenReckonPurchaseOrderService(items); // Service | Professional | Miscellaneous
 
     case "creditNotes":
-      return flattenReckonCustomerReturn(items);
+      return flattenMYOBCreditNote(items);
     case "vendorCredits":
       return flattenReckonSupplierReturn(items);
     case "invoicePayments":
