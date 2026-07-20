@@ -37,6 +37,8 @@ import { cleanNone, fmtDate, safe } from "../helpers.js";
 export const flattenQBOInvoiceItems = (invoices) => {
   const rows = [];
 
+  console.log(JSON.stringify(invoices, null, 2))
+
   for (const inv of invoices) {
 
     const lines = inv.Lines?.length ? inv.Lines : [{}];
@@ -120,6 +122,9 @@ export const flattenQBOInvoiceItems = (invoices) => {
 
         "Product/Service Tax Rate":
           line.TaxCode?.Code || "",
+        
+        "DiscountPercent":
+          line?.DiscountPercent,
 
         "Product/Service Tax Amount":
           lineTaxAmt,
@@ -137,6 +142,66 @@ export const flattenQBOInvoiceItems = (invoices) => {
            "",
 
         "Freight ($)":                 inv.Freight ?? "",
+        "UID" : inv?.UID
+      });
+    }
+  }
+
+  return rows;
+};
+
+
+// ── QBO Invoice — TimeBilling ──────────────────────────────────
+// Endpoint: /Sale/Invoice/TimeBilling
+export const flattenQBOInvoiceTimeBilling = (invoices) => {
+  const rows = [];
+
+  for (const inv of invoices) {
+    const lines = inv.Lines?.length ? inv.Lines : [{}];
+
+    const noTaxCodes = ["FRE", "N-T", "NONE"];
+    const taxableLines = lines.filter(
+      l => l.Type === "Transaction" && !noTaxCodes.includes(l.TaxCode?.Code)
+    );
+    const totalLineAmount = taxableLines.reduce(
+      (sum, l) => sum + Number(l.Total ?? 0), 0
+    );
+
+    for (const line of lines) {
+      if (line.Type === "Subtotal") continue;
+      const lineAmount = Number(line.Total ?? 0);
+      if (!lineAmount) continue;
+
+      const taxCode = line.TaxCode?.Code || "";
+      let lineTaxAmt = 0;
+      if (noTaxCodes.includes(taxCode)) {
+        lineTaxAmt = 0;
+      } else if (inv.TotalTax && totalLineAmount > 0) {
+        lineTaxAmt = (lineAmount / totalLineAmount) * Number(inv.TotalTax);
+      }
+
+      rows.push({
+        "Invoice Date": fmtDate(inv.Date),
+        "Invoice No": inv.Number || "",
+        "Due Date": fmtDate(inv.PromisedDate || inv.Terms?.DueDate),
+        "Customer": inv.Customer?.Name,
+        "Global Tax calculation": inv.IsTaxInclusive ? "Tax Inclusive" : "Tax Exclusive",
+        "Product/Service": line.Activity?.Name || line.Item?.Name || line.Item?.Number || "",
+        "Product/Service Description": line.Description || "",
+        "Product/Service Quantity": line.Hours ?? line.Units ?? 1,
+        "Product/Service Unit Price": line.Rate ?? "",
+        "Product/Service Tax Rate": taxCode,
+        "Product/Service Tax Amount": lineTaxAmt,
+        "Tax Amount": lineTaxAmt,
+        "Product/Service Class": line.Job?.Name || "",
+        "Currency Code": inv.ForeignCurrency?.Code || "AUD",
+        "Exchange Rate": inv.CurrencyExchangeRate ?? 1,
+        "LineAmount": lineAmount,
+        "Total Invoice Amount": inv.TotalAmount ?? "",
+        "Po Number": inv.CustomerPurchaseOrderNumber || "",
+        "Freight ($)": inv.Freight ?? "",
+        "Location": "",
+        "UID": inv?.UID
       });
     }
   }
@@ -182,6 +247,7 @@ export const flattenQBOInvoiceService = (invoices) => {
         "Freight ($)":                 inv.Freight ?? "",
         "Location":
           "",
+          "UID": inv?.UID,
       });
     }
   }
@@ -249,8 +315,29 @@ export const flattenQBOInvoicePayments = (payments) => {
         "Memo":               safe(p.Memo),
         "Currency Code":      p.ForeignCurrency?.Code || "AUD",
         "Exchange Rate":      p.CurrencyExchangeRate ?? 1,
+        "UID": p?.UID
       });
     }
+  }
+  return rows;
+};
+
+// ── QBO Credit Refund ────────────────────────────────────────
+// Endpoint: /Sale/CreditRefund
+export const flattenQBOCreditRefund = (items) => {
+  const rows = [];
+  for (const cr of items) {
+    rows.push({
+      "Refund Date":   fmtDate(cr.Date),
+      "Reference No":  safe(cr.Number),
+      "Customer":      cleanNone(cr.Customer?.Name || cr.Customer?.DisplayID),
+      "Invoice No":    safe(cr.Invoice?.Number),
+      "Bank Account":  safe(cr.Account?.DisplayID),
+      "Amount":        safe(cr.Amount),
+      "Payee":         safe(cr.Payee),
+      "Memo":          safe(cr.Memo),
+      "Currency Code": cr.ForeignCurrency?.Code || "AUD",
+    });
   }
   return rows;
 };

@@ -23,93 +23,89 @@ const flatAddr = (addresses) => {
 };
 
 export const flattenMYOBItems = (items) =>
+
   items.map((i) => ({
 
-    // ───── TEMPLATE FIELDS ─────
+  // ───── GENERAL ─────
 
-    "NAME":
-      safe(i.Name),
+  "NAME":
+    safe(i.Name),
 
-    "CODE":
-      safe(
-        i.Number
-      ),
+  "CODE":
+    safe(i.Number),
 
-    "TYPE":
-      i.IsInventoried
-        ? "Inventory"
-        : (
-            i.IsSold && i.IsBought
-              ? "Bought & Sold"
-              : (
-                  i.IsSold
-                    ? "Sold"
-                    : (
-                        i.IsBought
-                          ? "Bought"
-                          : "Service"
-                      )
-                )
-          ),
+  "TYPE":
+    i.IsInventoried
+      ? "Inventory"
+      : (
+          i.IsSold && i.IsBought
+            ? "Bought & Sold"
+            : (
+                i.IsSold
+                  ? "Sold"
+                  : (
+                      i.IsBought
+                        ? "Bought"
+                        : "Service"
+                    )
+              )
+        ),
 
-    "Status":
-      i.IsActive
-        ? "Active"
-        : "Inactive",
+  "Status":
+    i.IsActive
+      ? "Active"
+      : "Inactive",
 
-    // ───── SALES ─────
+  // ───── SALES ─────
 
-    "SALE ACCOUNT":
-      i.IncomeAccount?.DisplayID,
+  "SALE ACCOUNT":
+    i.IncomeAccount?.DisplayID,
 
-    "SALE DESCRIPTION":
-      safe(
-        i.Description ||
-        i.SellingDetails?.Description
-      ),
+  "SALE DESCRIPTION":
+    safe(
+      i.Description ||
+      i.SellingDetails?.Description
+    ),
 
-    "SALE PRICE":
-      safe(
-        i.SellingDetails?.BaseSellingPrice ??
-        i.BaseSellingPrice
-      ),
+  "SALE PRICE":
+    safe(
+      i.SellingDetails?.BaseSellingPrice ??
+      i.BaseSellingPrice
+    ),
 
-    "SALE TAX":
-      safe(
-        i.SellingDetails?.TaxCode?.Code
-      ),
+  "SALE TAX":
+    safe(
+      i.SellingDetails?.TaxCode?.Code
+    ),
 
-     "Amounts include tax":
-      i.SellingDetails?.IsTaxInclusive
-        ? "Yes"
-        : "No",
+  "Amounts include tax":
+    i.SellingDetails?.IsTaxInclusive
+      ? "Yes"
+      : "No",
 
-    // ───── PURCHASE ─────
+  // ───── PURCHASE ─────
 
-    "PURCHASE ACCOUNT":
-      i.ExpenseAccount?.DisplayID,
+  "PURCHASE ACCOUNT":
+    i.ExpenseAccount?.DisplayID || i.CostOfSalesAccount?.DisplayID,
 
-    "PURCHASE DESCRIPTION":
-      safe(
-        i.Description
-      ),
+  "PURCHASE DESCRIPTION":
+    safe(
+      i.Description
+    ),
 
-    "PURCHASE PRICE":
-      safe(
-        i.BuyingDetails?.StandardCost ??
-        i.BuyingDetails?.LastPurchasePrice
-      ),
+  "PURCHASE PRICE":
+    safe(
+      i.BuyingDetails?.StandardCost ??
+      i.BuyingDetails?.LastPurchasePrice
+    ),
 
-    "PURCHASE TAX":
-      safe(
-        i.BuyingDetails?.TaxCode?.Code
-      ),
-    
-    "Amounts include tax":
-      i.SellingDetails?.IsTaxInclusive
-        ? "Yes"
-        : "No",
-  }));
+  "PURCHASE TAX":
+    safe(
+      i.BuyingDetails?.TaxCode?.Code
+    ),
+
+}));
+
 
 // ── 2. Customers (/Contact/Customer) ─────────────────────────
 export const flattenMYOBCustomers = (items) =>

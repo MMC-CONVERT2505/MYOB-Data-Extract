@@ -61,6 +61,8 @@ import { cleanNone, fmtDate, safe } from "../helpers.js";
 // };
 
 export const flattenQBOBillItems = (bills, subType) => {
+
+  console.log("bill", JSON.stringify(bills, null, 2))
   const rows = [];
   const isItem = subType === "Item";
 
@@ -79,12 +81,27 @@ export const flattenQBOBillItems = (bills, subType) => {
     );
 
     // ✅ valid amount lines only
-    const validLines = lines.filter(
-      l => (l.Total ?? l.Amount ?? "") !== ""
+    // const validLines = lines.filter(
+    //   l => (l.Total ?? l.Amount ?? "") !== ""
+    // );
+
+    // // ✅ total amount for tax distribution
+    // const totalLineAmount = validLines.reduce((sum, l) => {
+    //   return sum + Number(l.Total ?? l.Amount ?? 0);
+    // }, 0);
+
+    // ✅ no tax codes
+    const noTaxCodes = ["FRE", "N-T", "NONE"];
+
+    // ✅ taxable transaction lines only
+    const taxableLines = lines.filter(
+      l =>
+        (l.Total ?? l.Amount ?? "") !== "" &&
+        !noTaxCodes.includes(l.TaxCode?.Code)
     );
 
-    // ✅ total amount for tax distribution
-    const totalLineAmount = validLines.reduce((sum, l) => {
+    // ✅ total taxable amount
+    const totalLineAmount = taxableLines.reduce((sum, l) => {
       return sum + Number(l.Total ?? l.Amount ?? 0);
     }, 0);
 
@@ -104,13 +121,36 @@ export const flattenQBOBillItems = (bills, subType) => {
       if (!lineTotal) continue;
 
       // ✅ tax fix
+      // let lineTaxAmt = 0;
+
+      // if (
+      //   line.TaxAmount !== undefined &&
+      //   line.TaxAmount !== null
+      // ) {
+      //   lineTaxAmt = line.TaxAmount;
+
+      // } else if (
+      //   bill.TotalTax &&
+      //   totalLineAmount > 0
+      // ) {
+      //   lineTaxAmt =
+      //     (lineTotal / totalLineAmount) *
+      //     bill.TotalTax;
+      // }
+
+      // ✅ tax fix
+      const taxCode = line.TaxCode?.Code || "";
       let lineTaxAmt = 0;
 
       if (
         line.TaxAmount !== undefined &&
         line.TaxAmount !== null
       ) {
-        lineTaxAmt = line.TaxAmount;
+        lineTaxAmt = Number(line.TaxAmount);
+
+      } else if (noTaxCodes.includes(taxCode)) {
+        // Tax free line
+        lineTaxAmt = 0;
 
       } else if (
         bill.TotalTax &&
@@ -118,13 +158,13 @@ export const flattenQBOBillItems = (bills, subType) => {
       ) {
         lineTaxAmt =
           (lineTotal / totalLineAmount) *
-          bill.TotalTax;
+          Number(bill.TotalTax);
       }
 
-      const taxExclusive =
-        bill.IsTaxInclusive
-          ? lineTotal - lineTaxAmt
-          : lineTotal;
+      // const taxExclusive =
+      //   bill.IsTaxInclusive
+      //     ? lineTotal - lineTaxAmt
+      //     : lineTotal; 
 
       const acctStr = [
         line.Account?.DisplayID,
@@ -172,10 +212,7 @@ export const flattenQBOBillItems = (bills, subType) => {
             : "",
 
         "Expense Tax Code":
-          !isItem
-            ? (line.TaxCode?.Code || "")
-            : "",
-
+          !isItem ? taxCode : "",
         "Expense Account Tax Amount":
           !isItem ? lineTaxAmt : "",
 
@@ -199,18 +236,13 @@ export const flattenQBOBillItems = (bills, subType) => {
           isItem ? qty : "",
 
         "Product/Services Tax Rate":
-          isItem
-            ? (line.TaxCode?.Code || "")
-            : "",
+          isItem ? taxCode : "",
 
         "Product/Services Billable Status":
           "",
 
         "Product/Services Tax Code":
-          isItem
-            ? (line.TaxCode?.Code || "")
-            : "",
-
+          isItem ? taxCode : "",
         "Product/Services Tax Amount":
           isItem ? lineTaxAmt : "",
 
@@ -246,8 +278,8 @@ export const flattenQBOBillItems = (bills, subType) => {
         "Tax Rate":
           line.TaxCode?.Code || "",
 
-        "Tax Exclusive Amount":
-          taxExclusive,
+        // "Tax Exclusive Amount":
+        //   taxExclusive,
 
         "Amount":
           lineTotal,
@@ -262,7 +294,9 @@ export const flattenQBOBillItems = (bills, subType) => {
         "Po Number":
           bill.CustomerPurchaseOrderNumber || "",
         "Location":
-           "",
+          "",
+        "UID":
+          bill?.UID, 
       });
     }
   }
@@ -271,6 +305,8 @@ export const flattenQBOBillItems = (bills, subType) => {
 };
 
 export const flattenQBOBillService = (bills) => {
+
+  console.log(JSON.stringify(bills, null, 2))
   const rows = [];
 
   for (const bill of bills) {
@@ -288,12 +324,27 @@ export const flattenQBOBillService = (bills) => {
     );
 
     // ✅ only transaction lines
-    const transactionLines = lines.filter(
-      l => l.Type === "Transaction"
+    // const transactionLines = lines.filter(
+    //   l => l.Type === "Transaction"
+    // );
+
+    // // ✅ total amount
+    // const totalLineAmount = transactionLines.reduce((sum, l) => {
+    //   return sum + Number(l.Total ?? l.Amount ?? 0);
+    // }, 0);
+
+    // ✅ tax free codes
+    const noTaxCodes = ["FRE", "N-T", "NONE"];
+
+    // ✅ only taxable transaction lines
+    const taxableLines = lines.filter(
+      l =>
+        l.Type === "Transaction" &&
+        !noTaxCodes.includes(l.TaxCode?.Code)
     );
 
-    // ✅ total amount
-    const totalLineAmount = transactionLines.reduce((sum, l) => {
+    // ✅ total taxable amount
+    const totalLineAmount = taxableLines.reduce((sum, l) => {
       return sum + Number(l.Total ?? l.Amount ?? 0);
     }, 0);
 
@@ -307,6 +358,30 @@ export const flattenQBOBillService = (bills) => {
       if (!lineTotal) continue;
 
       // ✅ tax logic
+      // let lineTaxAmt = 0;
+
+      // if (
+      //   line.TaxAmount !== undefined &&
+      //   line.TaxAmount !== null
+      // ) {
+      //   lineTaxAmt = Number(line.TaxAmount);
+
+      // } else if (
+      //   bill.TotalTax &&
+      //   totalLineAmount > 0 &&
+      //   line.Type === "Transaction"
+      // ) {
+      //   lineTaxAmt =
+      //     (lineTotal / totalLineAmount) *
+      //     Number(bill.TotalTax);
+      // }
+
+      // const taxExclusive = bill.IsTaxInclusive
+      //   ? lineTotal - lineTaxAmt
+      //   : lineTotal;
+
+      // ✅ tax logic
+      const taxCode = line.TaxCode?.Code || "";
       let lineTaxAmt = 0;
 
       if (
@@ -314,6 +389,10 @@ export const flattenQBOBillService = (bills) => {
         line.TaxAmount !== null
       ) {
         lineTaxAmt = Number(line.TaxAmount);
+
+      } else if (noTaxCodes.includes(taxCode)) {
+        // Tax free line
+        lineTaxAmt = 0;
 
       } else if (
         bill.TotalTax &&
@@ -325,14 +404,13 @@ export const flattenQBOBillService = (bills) => {
           Number(bill.TotalTax);
       }
 
-      const taxExclusive = bill.IsTaxInclusive
-        ? lineTotal - lineTaxAmt
-        : lineTotal;
-
       const acctStr =
         line.Account?.DisplayID || "";
 
       rows.push({
+
+        "UID": 
+        bill?.UID,
 
         "Date":
           fmtDate(bill.Date),
@@ -361,7 +439,8 @@ export const flattenQBOBillService = (bills) => {
           line.Description || "",
 
         "Expense Line Amount":
-          taxExclusive,
+          line.Total,
+        // taxExclusive,
 
         "Expense Class":
           line.Category?.Name ||
@@ -369,13 +448,14 @@ export const flattenQBOBillService = (bills) => {
           "",
 
         "Expense Tax Code":
-          line.TaxCode?.Code || "",
+          taxCode,
 
         "Expense Account Tax Amount":
           lineTaxAmt,
 
         "Total":
-          lineTotal,
+          // lineTotal,
+          line.TotalAmount,
 
         "Currency Code":
           bill.ForeignCurrency?.Code || "AUD",
@@ -388,12 +468,13 @@ export const flattenQBOBillService = (bills) => {
 
         // ✅ FIXED LOCATION
         "Location":
-          
+
           "",
-          
+
 
         "SupplierInvoiceNumber":
           bill.SupplierInvoiceNumber || "",
+
       });
     }
   }
@@ -426,6 +507,7 @@ export const flattenQBOBillPayments = (payments) => {
         "Currency Code": p.ForeignCurrency?.Code || "AUD",
         "Exchange Rate": p.CurrencyExchangeRate ?? 1,
         "Print Status": safe(p.DeliveryStatus),
+        "UID": p?.UID
       });
     }
   }
@@ -439,45 +521,65 @@ export const flattenQBOCreditNotes = (creditNotes) => {
     const lines = cn.Lines?.length ? cn.Lines : [{}];
     for (const line of lines) {
       rows.push({
-        "Adjustment Note No": cn.Number || "",
-        "Invoice Date": fmtDate(cn.Date),
-        "Invoice No": cn.AppliedToInvoice?.Number || "",
-        "Customer": cleanNone(cn.Customer?.CompanyName || cn.Customer?.DisplayID || cn.Customer?.Name),
-        "Adjustment Note Date": fmtDate(cn.Date),
-        "Global Tax calculation": "Tax Exclusive",
-        "Product/Service": line.Item?.Number || line.Item?.Name || "",
-        "Product/Service Description": line.Description || "",
-        "Product/Service Quantity": line.Quantity ?? "",
-        "Product/Service Unit Price": line.UnitPrice ?? "",
-        "Product/Service Tax Rate": line.TaxCode?.Code || "",
-        "Product/Service Tax Amount": line.TaxAmount ?? "",
-        "Tax Amount": line.TaxAmount ?? "",
-        "Product/Service Class": line.Category?.Name || "",
-        "Currency Code": cn.ForeignCurrency?.Code || "AUD",
-        "Exchange Rate": cn.CurrencyExchangeRate ?? 1,
-        "Location": "",
-        "Print Status": cn.InvoiceDeliveryStatus || "",
-        "Email Status": cn.InvoiceDeliveryStatus || "",
+        "UID":                cn.UID || "",
+        "CreditFromInvoice":  cn.CreditFromInvoice?.Number || "",
+        "Customer":           cleanNone(cn.Customer?.Name || cn.Customer?.CompanyName || cn.Customer?.DisplayID),
+        "Number":             cn.Number || "",
+        "Date":               fmtDate(cn.Date),
+        "CreditAmount":       cn.Amount ?? cn.CreditAmount ?? "",
+        "Memo":               cn.Memo || "",
+        "Invoice Id":         line.Sale?.Number || line.Invoice?.Number || "",
+        "AmountApplied":      line.AmountApplied ?? "",
+        "ForeignCurrency":    cn.ForeignCurrency?.Code || "",
+      });
+    }
+  }
+  return rows;
+};
+// ── QBO Vendor Credits — 11 columns ──────────────────────────
+// ── QBO Vendor Credits ───────────────────────────────────────
+// Endpoint: /Purchase/DebitSettlement
+// NOTE: settlement record — one row per Bill this credit was applied to.
+export const flattenQBOVendorCredit = (items) => {
+  // remove this line — was only for debugging, and had args backwards anyway
+  // console.log(JSON.stringify(items, 2, null))
+  const rows = [];
+  for (const vc of items) {
+    const lines = vc.Lines?.length ? vc.Lines : [{}];
+    for (const line of lines) {
+      rows.push({
+        "UID":                 vc.UID || "",
+        "DebitFromBill_Credit": vc?.DebitFromBill?.Number || "",   // ✅ confirmed correct
+        "Supplier":            cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName || vc.Supplier?.DisplayID),
+        "Number":              vc.Number || "",
+        "Date":                fmtDate(vc.Date),
+        "DebitAmount":         vc.Amount ?? vc.DebitAmount ?? "",   // ✅ correct — header total, one per credit
+        "Memo":                vc.Memo || "",
+        "Bill Id":             line.Purchase?.Number || "",        // ✅ correct — per-line bill reference
+        "AmountApplied":       line.AmountApplied ?? "",           // ✅ correct — per-line applied amount
+        "ForeignCurrency":     vc.ForeignCurrency?.Code || "",
       });
     }
   }
   return rows;
 };
 
-// ── QBO Vendor Credits — 11 columns ──────────────────────────
-export const convertVendorCreditToQBO = (vc) => {
-  const lines = vc.Lines?.length ? vc.Lines : [{}];
-  return lines.map(line => ({
-    "Ref No": vc.SupplierInvoiceNumber || vc.Number || "",
-    "Vendor": cleanNone(vc.Supplier?.CompanyName || vc.Supplier?.Name || vc.Supplier?.DisplayID),
-    "Payment Date": fmtDate(vc.Date),
-    "Global Tax Calculation": vc.IsTaxInclusive ? "Tax Inclusive" : "Tax Exclusive",
-    "Expense Account": [line.Account?.DisplayID, line.Account?.Name].filter(Boolean).join(" "),
-    "Expense Description": line.Description || "",
-    "Expense Line Amount": line.Total ?? line.Amount ?? "",
-    "Expense Tax Code": line.TaxCode?.Code || "",
-    "Location": line.Location?.Name || "",
-    "Currency Code": vc.ForeignCurrency?.Code || "AUD",
-    "Exchange Rate": vc.CurrencyExchangeRate ?? 1,
-  }));
+// ── QBO Debit Refund ─────────────────────────────────────────
+// Endpoint: /Purchase/DebitRefund
+export const flattenQBODebitRefund = (items) => {
+  const rows = [];
+  for (const dr of items) {
+    rows.push({
+      "Refund Date":   fmtDate(dr.Date),
+      "Reference No":  safe(dr.Number),
+      "Supplier":      cleanNone(dr.Supplier?.Name || dr.Supplier?.CompanyName),
+      "Bill No":       safe(dr.Bill?.Number),
+      "Bank Account":  safe(dr.Account?.DisplayID),
+      "Amount":        safe(dr.Amount),
+      "Payment Method": safe(dr.PaymentMethod),
+      "Memo":          safe(dr.Memo),
+      "Currency Code": dr.ForeignCurrency?.Code || "AUD",
+    });
+  }
+  return rows;
 };

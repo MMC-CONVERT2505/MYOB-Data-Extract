@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { extractionAPI, settingsAPI } from "../services/api";
@@ -10,16 +8,24 @@ import {
   FileSpreadsheet, Bell, Database, TrendingUp, Sparkles, X
 } from "lucide-react";
 
+// const OUTPUT_FORMATS = [
+//   { value: "raw",  label: "MYOB Raw" },
+//   { value: "qbo",  label: "QuickBooks Online (QBO)" },
+//   { value: "xero", label: "Xero" },
+// ];
+
 const OUTPUT_FORMATS = [
-  { value: "raw",  label: "MYOB Raw" },
-  { value: "qbo",  label: "QuickBooks Online (QBO)" },
+  { value: "raw", label: "Reckon One" },
+  { value: "qbo", label: "QuickBooks Online (QBO)" },
   { value: "xero", label: "Xero" },
+  { value: "reckon", label: "MYOB" },
 ];
 
-const INVOICE_SUBTYPES = ["Item", "Service", "Professional", "Miscellaneous"];
+const INVOICE_SUBTYPES = ["Item", "Service", "Professional", "TimeBilling", "Miscellaneous"];
 const BILL_SUBTYPES = ["Item", "Service", "Professional", "Miscellaneous"];
 const BANKING_SUBTYPES = ["spend", "receive", "transfer",];
 const QUOTE_SUBTYPES = ["Item", "Service", "Professional", "TimeBilling", "Miscellaneous"];
+const ORDER_SUBTYPES = ["Item", "Service", "Professional", "Miscellaneous"];
 
 const BANKING_LABELS = {
   spend: "Spend Money", receive: "Receive Money", transfer: "Transfer Money",
@@ -32,22 +38,26 @@ const REFERENCE_TYPES = new Set([
 ]);
 
 const DATA_TYPES = [
-  { key: "invoices",        label: "Invoices",         subtypes: INVOICE_SUBTYPES, color: "#6366f1" },
-  { key: "bills",           label: "Bills",            subtypes: BILL_SUBTYPES,    color: "#f59e0b" },
-  // { key: "creditNotes",     label: "Credit Notes",     subtypes: null,             color: "#10b981" },
-  // { key: "vendorCredits",   label: "Vendor Credits",   subtypes: null,             color: "#3b82f6" },
-  { key: "invoicePayments", label: "Invoice Payments", subtypes: null,             color: "#8b5cf6" },
-  { key: "billPayments",    label: "Bill Payments",    subtypes: null,             color: "#ec4899" },
-  { key: "banking",         label: "Banking",          subtypes: BANKING_SUBTYPES, color: "#14b8a6", bankingLabels: BANKING_LABELS },
-  { key: "generalJournal",  label: "Journal",          subtypes: null,             color: "#f97316" },
-  { key: "quotes",          label: "Quotes",           subtypes: QUOTE_SUBTYPES,   color: "#06b6d4" },
+  { key: "invoices", label: "Invoices", subtypes: INVOICE_SUBTYPES, color: "#6366f1" },
+  { key: "bills", label: "Bills", subtypes: BILL_SUBTYPES, color: "#f59e0b" },
+  { key: "creditNotes",     label: "Invoice Allocation",     subtypes: null,             color: "#10b981" },
+  { key: "vendorCredits",   label: "Bill Allocation",   subtypes: null,             color: "#3b82f6" },
+  { key: "debitRefunds",    label: "Debit Refunds",   subtypes: null,             color: "#c026d3" },
+  { key: "creditRefunds", label: "Credit Refunds", subtypes: null, color: "#d946ef" },
+  { key: "invoicePayments", label: "Invoice Payments", subtypes: null, color: "#8b5cf6" },
+  { key: "billPayments", label: "Bill Payments", subtypes: null, color: "#ec4899" },
+  { key: "banking", label: "Banking", subtypes: BANKING_SUBTYPES, color: "#14b8a6", bankingLabels: BANKING_LABELS },
+  { key: "generalJournal", label: "Journal", subtypes: null, color: "#f97316" },
+  { key: "quotes", label: "Quotes", subtypes: QUOTE_SUBTYPES, color: "#06b6d4" },
+  { key: "salesOrders",     label: "Sales Orders",     subtypes: ORDER_SUBTYPES,   color: "#0891b2" },
+  { key: "purchaseOrders",  label: "Purchase Orders",  subtypes: ORDER_SUBTYPES,   color: "#7c3aed" },
   // ── Reference Data ──────────────────────────────────────────
-  { key: "items",           label: "Items",            subtypes: null,             color: "#0ea5e9" },
-  { key: "customers",       label: "Customers",        subtypes: null,             color: "#a855f7" },
-  { key: "suppliers",       label: "Suppliers",        subtypes: null,             color: "#f43f5e" },
-  { key: "accounts",        label: "Accounts",         subtypes: null,             color: "#84cc16" },
-  { key: "jobs",            label: "Jobs",             subtypes: null,             color: "#fb923c" },
-  { key: "taxcodes",        label: "Tax Codes",        subtypes: null,             color: "#2dd4bf" },
+  { key: "items", label: "Items", subtypes: null, color: "#0ea5e9" },
+  { key: "customers", label: "Customers", subtypes: null, color: "#a855f7" },
+  { key: "suppliers", label: "Suppliers", subtypes: null, color: "#f43f5e" },
+  { key: "accounts", label: "Accounts", subtypes: null, color: "#84cc16" },
+  { key: "jobs", label: "Jobs", subtypes: null, color: "#fb923c" },
+  { key: "taxcodes", label: "Tax Codes", subtypes: null, color: "#2dd4bf" },
 ];
 
 const today = () => new Date().toISOString().split("T")[0];
@@ -59,12 +69,12 @@ const dateRangeFromSetting = (setting) => {
   const now = new Date();
   const fmt = (d) => d.toISOString().split("T")[0];
   switch (setting) {
-    case "last30":      { const d = new Date(now); d.setDate(d.getDate() - 30);        return { start: fmt(d), end: fmt(now) }; }
-    case "last60":      { const d = new Date(now); d.setDate(d.getDate() - 60);        return { start: fmt(d), end: fmt(now) }; }
-    case "last90":      { const d = new Date(now); d.setDate(d.getDate() - 90);        return { start: fmt(d), end: fmt(now) }; }
-    case "last6months": { const d = new Date(now); d.setMonth(d.getMonth() - 6);       return { start: fmt(d), end: fmt(now) }; }
-    case "lastYear":    { const d = new Date(now); d.setFullYear(d.getFullYear() - 1); return { start: fmt(d), end: fmt(now) }; }
-    default:              return { start: sixYearsAgo(), end: fmt(now) };
+    case "last30": { const d = new Date(now); d.setDate(d.getDate() - 30); return { start: fmt(d), end: fmt(now) }; }
+    case "last60": { const d = new Date(now); d.setDate(d.getDate() - 60); return { start: fmt(d), end: fmt(now) }; }
+    case "last90": { const d = new Date(now); d.setDate(d.getDate() - 90); return { start: fmt(d), end: fmt(now) }; }
+    case "last6months": { const d = new Date(now); d.setMonth(d.getMonth() - 6); return { start: fmt(d), end: fmt(now) }; }
+    case "lastYear": { const d = new Date(now); d.setFullYear(d.getFullYear() - 1); return { start: fmt(d), end: fmt(now) }; }
+    default: return { start: sixYearsAgo(), end: fmt(now) };
   }
 };
 
@@ -73,10 +83,10 @@ const csvCell = (v) => { const s = flatVal(v); return /[,"\n\r]/.test(s) ? `"${s
 const toCSV = (items) => { if (!items?.length) return ""; const keys = Object.keys(items[0]); return [keys.map(csvCell).join(","), ...items.map(r => keys.map(k => csvCell(r[k])).join(","))].join("\n"); };
 const dl = (content, name, mime) => { const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([content], { type: mime })), download: name }); a.click(); URL.revokeObjectURL(a.href); };
 const dlCSV = (items, name) => dl(toCSV(items.map(convertDatesInRow)), name + ".csv", "text/csv");
-const dlJSON = (items, name) => dl(JSON.stringify(items.map(convertDatesInRow), null, 2), name + ".json", "application/json");
+const dlJSON = (items, name) => dl(JSON.stringify(items?.map(convertDatesInRow), null, 2), name + ".json", "application/json");
 
 const DATE_COLS = new Set([
-  "Payment Date","Invoice date", "Invoice Due date","Journal Date", "Invoice Date", "Due Date", "Date", "DateOccurred",
+  "Payment Date", "Invoice date", "Bill date", "Date*", "Invoice Due date", "Journal Date*", "Journal Date", "Invoice Date", "Due Date", "Date", "DateOccurred",
   "Adjustment Note Date", "As Of Date", "PromisedDate", "LastPaymentDate",
   "Terms.DiscountDate", "Terms.BalanceDueDate", "Terms.DiscountExpiryDate", "Terms.DueDate",
 ]);
@@ -227,16 +237,16 @@ function DownloadGroup({ label, count, items, filename, color = "#6366f1" }) {
       </div>
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: "CSV",   onClick: () => dlCSV(items, filename),   bg: "white",        border: "#e2e8f0",       color: "#64748b" },
-          { label: "Excel", onClick: () => dlExcel(items, filename), bg: "#10b98112",    border: "#10b98130",     color: "#059669" },
-          { label: "JSON",  onClick: () => dlJSON(items, filename),  bg: color + "12",   border: color + "30",    color: color },
+          { label: "CSV", onClick: () => dlCSV(items, filename), bg: "white", border: "#e2e8f0", color: "#64748b" },
+          { label: "Excel", onClick: () => dlExcel(items, filename), bg: "#10b98112", border: "#10b98130", color: "#059669" },
+          { label: "JSON", onClick: () => dlJSON(items, filename), bg: color + "12", border: color + "30", color: color },
         ].map(({ label: btnLabel, onClick, bg, border, color: btnColor }) => (
           <button key={btnLabel} onClick={onClick}
             className="flex items-center justify-center gap-1.5 py-3 rounded-xl text-xs font-bold transition-all hover:-translate-y-0.5 hover:shadow-sm border"
             style={{ background: bg, borderColor: border, color: btnColor }}>
-            {btnLabel === "CSV"   && <FileDown size={13} />}
+            {btnLabel === "CSV" && <FileDown size={13} />}
             {btnLabel === "Excel" && <FileSpreadsheet size={13} />}
-            {btnLabel === "JSON"  && <FileJson size={13} />}
+            {btnLabel === "JSON" && <FileJson size={13} />}
             {btnLabel}
           </button>
         ))}
@@ -315,7 +325,7 @@ function ResultModal({ result, outputFormat, myobFname, convertedFname, activeTy
           <div style={{ padding: "24px 32px" }}>
             {outputFormat === "raw" && (
               <DownloadGroup
-                label="MYOB Raw Data"
+                label="Reckon One"
                 count={result.count}
                 items={result.items}
                 filename={myobFname}
@@ -338,6 +348,15 @@ function ResultModal({ result, outputFormat, myobFname, convertedFname, activeTy
                 items={result.converted.items}
                 filename={convertedFname}
                 color="#13b5ea"
+              />
+            )}
+            {outputFormat === "reckon" && result.converted && (
+              <DownloadGroup
+                label="MYOB"
+                count={result.converted.count}
+                items={result.converted.items}
+                filename={convertedFname}
+                color="#f97316"
               />
             )}
           </div>
@@ -663,7 +682,8 @@ export default function Dashboard() {
               <div className="flex flex-col gap-2.5">
                 {[
                   { name: "MYOB Business", connected: !!businessName, color: "#6366f1" },
-                  ...(outputFormat !== "raw" ? [{ name: outputFormat === "xero" ? "Xero" : "QuickBooks Online", connected: true, color: "#10b981" }] : []),
+                  // ...(outputFormat !== "raw" ? [{ name: outputFormat === "xero" ? "Xero" : "QuickBooks Online", connected: true, color: "#10b981" }] : []),
+                  ...(outputFormat !== "raw" ? [{ name: outputFormat === "xero" ? "Xero" : outputFormat === "reckon" ? "MYOB" : "QuickBooks Online", connected: true, color: "#10b981" }] : []),
                 ].map(conn => (
                   <div key={conn.name}
                     className="flex items-center justify-between px-4 py-3 rounded-xl border transition-all"
@@ -705,9 +725,9 @@ export default function Dashboard() {
                       style={{ animationDelay: `${i * 50}ms` }}>
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{ background: h.status === "Success" ? "#10b98115" : h.status === "In Progress" ? "#f59e0b15" : "#ef444415" }}>
-                        {h.status === "Success"     && <CheckCircle size={14} className="text-emerald-500" />}
+                        {h.status === "Success" && <CheckCircle size={14} className="text-emerald-500" />}
                         {h.status === "In Progress" && <Clock size={14} className="text-amber-500" />}
-                        {h.status === "Failed"      && <AlertCircle size={14} className="text-red-400" />}
+                        {h.status === "Failed" && <AlertCircle size={14} className="text-red-400" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-slate-700 truncate">{h.label}</p>

@@ -1,5 +1,45 @@
-
 import { cleanNone, fmtDate } from "../helpers.js";
+
+
+
+// ── Xero Invoice — TimeBilling ─────────────────────────────────
+// Endpoint: /Sale/Invoice/TimeBilling
+export const flattenXeroInvoiceTimeBilling = (invoices) => {
+  const rows = [];
+
+  for (const inv of invoices) {
+    const lines = inv.Lines?.length ? inv.Lines : [{}];
+    const contactName = cleanNone(
+      inv.Customer?.CompanyName || inv.Customer?.Name || inv.Customer?.DisplayID
+    );
+
+    for (const line of lines) {
+      if (line.Type === "Subtotal") continue;
+      const lineAmount = Number(line.Total ?? 0);
+      if (!lineAmount) continue;
+
+      const taxCode = line.TaxCode?.Code || "NONE";
+
+      rows.push({
+        "ContactName": contactName,
+        "InvoiceNumber": inv.Number || "",
+        "Invoice Date": fmtDate(inv.Date),
+        "DueDate": fmtDate(inv.PromisedDate || inv.Terms?.DueDate),
+        "Description": line.Description || "",
+        "Quantity": line.Hours ?? line.Units ?? 1,
+        "UnitAmount": line.Rate ?? "",
+        "AccountCode": line.Job?.Name || "",
+        "TaxType": taxCode,
+        "LineAmount": lineAmount,
+        "Total": inv.TotalAmount ?? "",
+        "Reference": inv.CustomerPurchaseOrderNumber || "",
+        "CurrencyCode": inv.ForeignCurrency?.Code || "AUD",
+      });
+    }
+  }
+
+  return rows;
+};
 
 export const flattenXeroInvoices = (invoices) => {
 
@@ -201,6 +241,8 @@ export const flattenXeroInvoices = (invoices) => {
 
         "Exchange Rate":
           inv.CurrencyExchangeRate ?? 1,
+
+        "UID": inv?.UID,
       });
     }
   }
@@ -281,8 +323,35 @@ export const flattenXeroInvoicePayments = (payments) => {
           "",
 
         "CurrencyRate": p.CurrencyExchangeRate ?? 1,
+        "UID" : p?.UID,
       });
     }
+  }
+
+  return rows;
+};
+
+// ── Xero Credit Refund ───────────────────────────────────────
+// Endpoint: /Sale/CreditRefund
+export const flattenXeroCreditRefund = (items) => {
+  const rows = [];
+
+  for (const cr of items) {
+    const contactName = cleanNone(
+      cr.Customer?.CompanyName ||
+      cr.Customer?.Name ||
+      cr.Customer?.DisplayID
+    );
+
+    rows.push({
+      "ContactName": contactName,
+      "Date":        fmtDate(cr.Date),
+      "Invoice No":  cr.Invoice?.Number || "",
+      "Amount":      cr.Amount ?? "",
+      "Bank":        cr.Account?.DisplayID || "",
+      "Reference":   cr.Number || cr.Memo || "",
+      "CurrencyRate": 1,
+    });
   }
 
   return rows;
@@ -482,6 +551,8 @@ export const flattenXeroSpendReceive = (items, subType) => {
 
         "Line Amount Type":
           txn.IsTaxInclusive ? "Tax Inclusive" : "Tax Exclusive",
+
+        "UID": txn?.UID,
       });
     }
   }
@@ -537,48 +608,13 @@ export const flattenXeroTransfer = (items) => {
         txn.ToAccount?.DisplayID ||
         txn.ToAccount?.Name ||
         "",
+
+      "UID": txn?.UID,
     });
   }
 
   return rows;
 };
-// ═══════════════════════════════════════════════════════════════
-// Xero General Journal
-// Narration | Date | Description | AccountCode | TaxRate |
-// Amount | TrackingName1 | TrackingOption1 |
-// TrackingName2 | TrackingOption2 | LineAmountType | Status
-// ═══════════════════════════════════════════════════════════════
-// export const flattenXeroJournal = (items) => {
-//   const rows = [];
-
-//   for (const jnl of items) {
-//     const lines = jnl.Lines?.length ? jnl.Lines : [{}];
-
-//     // Narration — journal-level memo/description
-//     const narration = jnl.Memo || jnl.Description || jnl.Narration || jnl.JournalMemo || "";
-
-//     for (const line of lines) {
-//       const lineAmount = Number(line.Amount ?? line.Total ?? 0);
-//       if (!lineAmount) continue;
-
-//       rows.push({
-//         "Narration":        narration,
-//         "Date":             fmtDate(jnl.Date || jnl.DateOccurred),
-//         "Description":      line.Description || "",
-//         "AccountCode":      line.Account?.DisplayID || "",
-//         "TaxRate":          line.TaxCode?.Code || "",
-//         "Amount":           lineAmount,
-//         "TrackingName1":    "",
-//         "TrackingOption1":  "",
-//         "TrackingName2":    "",
-//         "TrackingOption2":  "",
-//         "LineAmountType":   jnl.IsTaxInclusive ? "Inclusive" : "Exclusive",
-//         "Status":           jnl.Status || "",
-//       });
-//     }
-//   }
-//   return rows;
-// };
 
 
 export const flattenXeroJournal = (items) => {
@@ -713,4 +749,3 @@ export const flattenXeroJournal = (items) => {
 
   return rows;
 };
-

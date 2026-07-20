@@ -1,14 +1,56 @@
 import {
+  flattenReckonCOA,
+  flattenReckonCustomer,
+  flattenReckonSupplier,
+  flattenReckonItem,
+  flattenReckonJob,
+} from "./converters/referenceReckon.js";
+
+import {
+  flattenReckonInvoice,
+  flattenReckonCustomerPayment,
+  flattenReckonSpendMoney,
+  flattenReckonReceiveMoney,
+  flattenReckonBankTransfer,
+  flattenReckonJournal,
+  flattenMYOBCreditNote,
+} from "./converters/reckonInvoices.js";
+
+import {
+  flattenReckonBills,
+  flattenReckonSupplierReturn,
+  flattenReckonSupplierPayment,
+} from "./converters/reckonBills.js";
+
+import {
+  flattenReckonQuoteItem,
+  flattenReckonQuoteService,
+  flattenReckonSalesOrderItem,
+  flattenReckonSalesOrderService,
+} from "./converters/reckonQuotes.js";
+
+import {
+  flattenReckonPurchaseOrderItem,
+  flattenReckonPurchaseOrderService,
+} from "./converters/reckonPurchaseOrders.js";
+
+
+import {
   flattenQBOInvoiceItems,
   flattenQBOProfMiscInvoice,
   flattenQBOInvoicePayments,
   flattenQBOInvoiceService,
+  flattenQBOCreditRefund,
+  flattenQBOInvoiceTimeBilling,
 } from "./converters/qboInvoices.js";
 
 import {
   flattenQBOBillItems,
   flattenQBOBillPayments,
   flattenQBOBillService,
+   flattenQBOVendorCredit,
+  flattenQBODebitRefund,
+  flattenQBOCreditNotes,
 } from "./converters/qboBills.js";
 
 import {
@@ -17,11 +59,16 @@ import {
   flattenXeroSpendReceive,
   flattenXeroTransfer,
   flattenXeroJournal,
+  flattenXeroCreditRefund,
+  flattenXeroInvoiceTimeBilling,
 } from "./converters/xeroInvoices.js";
 
 import {
   flattenXeroBills,
   flattenXeroBillPayments,
+  flattenXeroVendorCredit,
+  flattenXeroDebitRefund,
+  flattenXEROCreditNote,
 } from "./converters/xeroBills.js";
 
 import {
@@ -35,6 +82,10 @@ import {
   flattenMYOBTransferMoneyQBO,
   flattenMYOBGeneralJournal,
   flattenMYOBQuote,
+  flattenMYOBCreditRefund,
+  flattenMYOBInvoiceTimeBilling,
+   flattenMYOBVendorCredit,
+  flattenMYOBDebitRefund,
 } from "./converters/myobRaw.js";
 
 import {
@@ -83,6 +134,7 @@ export const convertToQBO = (items, dataType, subType = null, businessName = "")
       if (subType === "Service") return flattenQBOInvoiceService(items, businessName);
       if (subType === "Professional") return flattenQBOProfMiscInvoice(items, businessName);
       if (subType === "Miscellaneous") return flattenQBOProfMiscInvoice(items, businessName);
+      if (subType === "TimeBilling") return flattenQBOInvoiceTimeBilling(items);
       return flattenMYOBInvoiceService(items, businessName);
 
     case "bills":
@@ -94,6 +146,18 @@ export const convertToQBO = (items, dataType, subType = null, businessName = "")
 
     case "billPayments":
       return flattenQBOBillPayments(items, businessName);
+
+    case "creditRefunds":
+      return flattenQBOCreditRefund(items);
+
+    case "vendorCredits":
+      return flattenQBOVendorCredit(items);
+
+    case "debitRefunds":
+      return flattenQBODebitRefund(items);
+
+    case "creditNotes":
+      return  flattenQBOCreditNotes(items)
 
     case "banking":
       if (subType === "spend") return flattenMYOBSpendMoneyQBO(items);
@@ -132,6 +196,7 @@ export const convertToXero = (items, dataType, subType = null, businessName = ""
 
   switch (dataType) {
     case "invoices":
+      if (subType === "TimeBilling") return flattenXeroInvoiceTimeBilling(items);
       return flattenXeroInvoices(items, subType, businessName);
 
     case "bills":
@@ -142,6 +207,18 @@ export const convertToXero = (items, dataType, subType = null, businessName = ""
 
     case "billPayments":
       return flattenXeroBillPayments(items, businessName);
+
+    case "creditNotes":
+      return  flattenXEROCreditNote(items)
+
+    case "creditRefunds":
+      return flattenXeroCreditRefund(items);
+
+    case "vendorCredits":
+      return flattenXeroVendorCredit(items);
+
+    case "debitRefunds":
+      return flattenXeroDebitRefund(items);
 
     case "banking":
       if (subType === "spend" || subType === "receive") return flattenXeroSpendReceive(items, subType);
@@ -179,6 +256,7 @@ export const convertToMYOBRaw = (items, dataType, subType = null, businessName =
 
   switch (dataType) {
     case "invoices":
+      if (subType === "TimeBilling") return flattenMYOBInvoiceTimeBilling(items, businessName);
       return flattenMYOBInvoiceService(items, businessName);
 
     case "bills":
@@ -189,6 +267,15 @@ export const convertToMYOBRaw = (items, dataType, subType = null, businessName =
 
     case "billPayments":
       return flattenMYOBBillPayment(items);
+
+    case "creditRefunds":
+      return flattenMYOBCreditRefund(items);
+
+    case "vendorCredits":
+      return flattenMYOBVendorCredit(items);
+
+    case "debitRefunds":
+      return flattenMYOBDebitRefund(items);
 
     case "banking":
       if (subType === "spend") return flattenMYOBSpendMoneyRaw(items);
@@ -215,8 +302,57 @@ export const convertToMYOBRaw = (items, dataType, subType = null, businessName =
     case "taxcodes":
       return flattenMYOBTaxCodes(items);
 
+    default:
+      return items;
+  }
+};
 
+// ── Reckon Converter ────────────────────────────────────────────────────────
+export const convertToReckon = (items, dataType, subType = null, businessName = "") => {
+  if (!items?.length) return [];
 
+  switch (dataType) {
+    case "invoices":
+      return flattenReckonInvoice(items);
+    case "bills":
+      return flattenReckonBills(items);
+    case "quotes":
+      if (subType === "Item") return flattenReckonQuoteItem(items);
+      return flattenReckonQuoteService(items); // Service | Professional | Miscellaneous | TimeBilling
+
+    case "salesOrders":
+      if (subType === "Item") return flattenReckonSalesOrderItem(items);
+      return flattenReckonSalesOrderService(items); // Service | Professional | Miscellaneous
+
+    case "purchaseOrders":
+      if (subType === "Item") return flattenReckonPurchaseOrderItem(items);
+      return flattenReckonPurchaseOrderService(items); // Service | Professional | Miscellaneous
+      
+    case "creditNotes":
+      return flattenMYOBCreditNote(items);
+    case "vendorCredits":
+      return flattenReckonSupplierReturn(items);
+    case "invoicePayments":
+      return flattenReckonCustomerPayment(items);
+    case "billPayments":
+      return flattenReckonSupplierPayment(items);
+    case "banking":
+      if (subType === "spend") return flattenReckonSpendMoney(items);
+      if (subType === "receive") return flattenReckonReceiveMoney(items);
+      if (subType === "transfer") return flattenReckonBankTransfer(items);
+      return items;
+    case "generalJournal":
+      return flattenReckonJournal(items);
+    case "items":
+      return flattenReckonItem(items);
+    case "customers":
+      return flattenReckonCustomer(items);
+    case "suppliers":
+      return flattenReckonSupplier(items);
+    case "accounts":
+      return flattenReckonCOA(items);
+    case "jobs":
+      return flattenReckonJob(items);
     default:
       return items;
   }

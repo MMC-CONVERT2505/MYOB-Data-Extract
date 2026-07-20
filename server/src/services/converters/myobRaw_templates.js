@@ -1,33 +1,6 @@
 import { cleanNone, fmtDate } from "../helpers.js";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MYOB RAW TEMPLATES
-// Purpose : Export ALL API fields as flat rows for Excel (MYOB Raw format).
-//           These are separate from the QBO-style templates (limited columns).
-//           Each function name ends with "Raw" to avoid clashing with the
-//           existing QBO variants.
-//
-// Functions exported:
-//   flattenMYOBSpendMoneyRaw      – /Banking/SpendMoneyTxn
-//   flattenMYOBReceiveMoneyRaw    – /Banking/ReceiveMoneyTxn
-//   flattenMYOBTransferMoneyRaw   – /Banking/TransferMoneyTxn  (no Lines[])
-//   flattenMYOBGeneralJournalRaw  – /GeneralLedger/GeneralJournal
-// ─────────────────────────────────────────────────────────────────────────────
 
-
-// ── 1. MYOB Spend Money — ALL fields flat ────────────────────────────────────
-// Endpoint : GET /Banking/SpendMoneyTxn
-//
-// Transaction-level fields (repeated per line row):
-//   UID, PaymentNumber, Date, Account (bank), Contact, Memo,
-//   AmountPaid, TotalTax, IsTaxInclusive, ChequePrinted, DeliveryStatus,
-//   StatementParticulars, StatementCode, StatementReference,
-//   Category, ForeignCurrency, CurrencyExchangeRate, URI, RowVersion
-//
-// Line-level fields (one row per line):
-//   RowID, Account, Amount, AmountForeign, TaxAmount, TaxAmountForeign,
-//   TaxCode, Job, Memo, UnitCount, IsOverriddenTaxAmount, RowVersion
-// ─────────────────────────────────────────────────────────────────────────────
 export const flattenMYOBSpendMoneyRaw = (items) => {
 
   const rows = [];
@@ -40,24 +13,40 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
 
     // ✅ valid lines only
     const validLines = lines.filter(
-      l => (l.Amount ?? l.Total ?? "") !== ""
+      l =>
+        l.Amount !== undefined ||
+        l.Total !== undefined
     );
 
     // ✅ total line amount
     const totalLineAmount = validLines.reduce((sum, l) => {
+
       return sum + Number(
-        l.Amount ?? l.Total ?? 0
+        l.Amount ??
+        l.Total ??
+        0
       );
+
     }, 0);
 
     for (const line of lines) {
 
+      // ✅ FIXED amount logic
       const lineAmount = Number(
-        line.Amount ?? line.Total ?? 0
+        line.Amount ??
+        line.Total ??
+        txn.AmountPaid ??
+        0
       );
 
-      // ❌ skip empty rows
-      if (!lineAmount) continue;
+      // ❌ skip only invalid
+      if (
+        lineAmount === null ||
+        lineAmount === undefined ||
+        Number.isNaN(lineAmount)
+      ) {
+        continue;
+      }
 
       // ✅ service detection
       const isService =
@@ -68,18 +57,18 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
       const quantity = isService
         ? 1
         : (
-            line.Quantity ??
-            line.UnitCount ??
-            line.ShipQuantity ??
-            1
-          );
+          line.Quantity ??
+          line.UnitCount ??
+          line.ShipQuantity ??
+          1
+        );
 
       // ✅ unit amount
       const unitAmount = isService
         ? lineAmount
         : Number(
-            line.UnitPrice ?? 0
-          );
+          line.UnitPrice ?? 0
+        );
 
       // ✅ tax code
       const taxCode =
@@ -99,6 +88,7 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
         line.TaxAmount !== undefined &&
         line.TaxAmount !== null
       ) {
+
         taxAmount = Number(
           line.TaxAmount
         );
@@ -107,6 +97,7 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
         txn.TotalTax &&
         totalLineAmount > 0
       ) {
+
         taxAmount =
           (lineAmount / totalLineAmount) *
           Number(txn.TotalTax);
@@ -127,15 +118,18 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
         .filter(Boolean)
         .join(" ");
 
-      rows.push({
 
+      rows.push({
         // ───── TEMPLATE FIELDS ─────
+
+        "UID":
+          txn.UID || "",
 
         "Date*":
           fmtDate(txn.Date),
 
-        "Bank Account*":
-          txn.Account?.DisplayID || "",
+        "Reference":
+          txn.PaymentNumber || "",
 
         "Contact*":
           cleanNone(
@@ -147,19 +141,20 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
         "Payable type":
           txn.Contact?.Type || "",
 
+        "Bank Account*":
+          txn.Account?.DisplayID || "",
+
+        "Bank Name*":
+          txn.Account?.Name || "",
+
+        "ForeignCurrency":
+          txn?.ForeignCurrency?.Code || "",
+
         "Payment method":
           txn.PaymentMethod || "",
 
-        "Reference":
-          txn.PaymentNumber || "",
-
         "Details":
           txn.Memo || "",
-
-        "Amount*":
-          txn.IsTaxInclusive
-            ? "Tax Inclusive"
-            : "Tax Exclusive",
 
         "Allocation notes":
           txn.Memo || "",
@@ -169,27 +164,17 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
           line.Job?.Number ||
           "",
 
-        // ✅ item/service
         "Item":
           itemName,
 
-        // ✅ fixed item price
-        "Item price":
-          unitAmount,
-
-        "Account":
-          line.Account?.DisplayID || "",
-
-        // ✅ line description
         "Description":
-          
-          line.Memo ||
-          
-          "",
+          line.Memo || "",
 
-        // ✅ fixed qty
         "Qty":
           quantity,
+
+        "Item price":
+          unitAmount,
 
         "Discount":
           line.DiscountPercent ?? "",
@@ -197,16 +182,21 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
         "Tax code":
           taxCode,
 
-        // ✅ fixed tax amount
         "Tax Amount":
-          Number(
-            taxAmount
-          ),
+          Number(taxAmount),
 
         "Amount":
           lineAmount,
 
+        "Amount*":
+          txn.IsTaxInclusive
+            ? "Tax Inclusive"
+            : "Tax Exclusive",
+
+        "Account":
+          line.Account?.DisplayID || "",
       });
+
     }
   }
 
@@ -264,11 +254,11 @@ export const flattenMYOBReceiveMoneyRaw = (items) => {
       const quantity = isService
         ? 1
         : (
-            line.Quantity ??
-            line.UnitCount ??
-            line.ShipQuantity ??
-            1
-          );
+          line.Quantity ??
+          line.UnitCount ??
+          line.ShipQuantity ??
+          1
+        );
 
       // ✅ unit amount
       const unitAmount = isService
@@ -313,17 +303,109 @@ export const flattenMYOBReceiveMoneyRaw = (items) => {
 
       // ✅ item name
       const itemName = line.Item?.Number
-         
-      rows.push({
 
+      // rows.push({
+
+      //   // ───── TEMPLATE FIELDS ─────
+
+      //   "Date":
+      //     fmtDate(txn.Date),
+
+      //   "Bank Account*":
+      //     txn.Account?.DisplayID
+      //   ,
+
+      //   "Bank Name":
+      //     txn.Account?.Name
+      //   ,
+      //   "Contact*":
+      //     cleanNone(
+      //       txn.Contact?.Name ||
+      //       txn.Contact?.CompanyName ||
+      //       txn.Contact?.DisplayID
+      //     ),
+
+      //   "Payment method":
+      //     txn.PaymentMethod || "",
+
+      //   "Reference":
+      //     txn.ReceiptNumber || "",
+
+      //   "Details":
+      //     txn.Memo || "",
+
+      //   "Amount*":
+      //     txn.IsTaxInclusive
+      //       ? "Tax Inclusive"
+      //       : "Tax Exclusive",
+
+      //   "Allocation notes":
+      //     txn.Memo || "",
+
+      //   "classification":
+      //     line.Job?.Name ||
+      //     line.Job?.Number ||
+      //     "",
+
+      //   // ✅ item/service
+      //   "Item":
+      //     itemName,
+
+      //   // ✅ fixed item price
+      //   "Item price":
+      //     unitAmount,
+
+      //   "Account":
+      //     line.Account?.DisplayID || "",
+
+      //   "Description":
+
+      //     line.Memo ||
+
+      //     "",
+
+      //   // ✅ fixed qty
+      //   "Qty":
+      //     quantity,
+
+      //   "ForeignCurrency":
+      //     txn?.ForeignCurrency?.Code || "",
+
+      //   "Discount":
+      //     line.DiscountPercent ?? "",
+
+      //   "Tax code":
+      //     taxCode,
+
+      //   // ✅ fixed tax amount
+      //   "Tax Amount":
+      //     Number(
+      //       taxAmount
+      //     ),
+
+      //   "Amount":
+      //     lineAmount,
+
+      //   "ForeignCurrency":
+      //     txn?.ForeignCurrency?.Code,
+
+      //   "UID":
+      //     txn.UID || "",
+      // });
+
+
+
+      rows.push({
         // ───── TEMPLATE FIELDS ─────
+
+        "UID":
+          txn.UID || "",
 
         "Date":
           fmtDate(txn.Date),
 
-        "Bank Account*":
-          txn.Account?.DisplayID
-            ,
+        "Reference":
+          txn.ReceiptNumber || "",
 
         "Contact*":
           cleanNone(
@@ -332,19 +414,20 @@ export const flattenMYOBReceiveMoneyRaw = (items) => {
             txn.Contact?.DisplayID
           ),
 
+        "Bank Account*":
+          txn.Account?.DisplayID || "",
+
+        "Bank Name":
+          txn.Account?.Name || "",
+
+        "ForeignCurrency":
+          txn?.ForeignCurrency?.Code || "",
+
         "Payment method":
           txn.PaymentMethod || "",
 
-        "Reference":
-          txn.ReceiptNumber || "",
-
         "Details":
           txn.Memo || "",
-
-        "Amount*":
-          txn.IsTaxInclusive
-            ? "Tax Inclusive"
-            : "Tax Exclusive",
 
         "Allocation notes":
           txn.Memo || "",
@@ -354,26 +437,17 @@ export const flattenMYOBReceiveMoneyRaw = (items) => {
           line.Job?.Number ||
           "",
 
-        // ✅ item/service
         "Item":
           itemName,
 
-        // ✅ fixed item price
-        "Item price":
-          unitAmount,
-
-        "Account":
-          line.Account?.DisplayID || "",
-
         "Description":
-         
-          line.Memo ||
-         
-          "",
+          line.Memo || "",
 
-        // ✅ fixed qty
         "Qty":
           quantity,
+
+        "Item price":
+          unitAmount,
 
         "Discount":
           line.DiscountPercent ?? "",
@@ -381,14 +455,19 @@ export const flattenMYOBReceiveMoneyRaw = (items) => {
         "Tax code":
           taxCode,
 
-        // ✅ fixed tax amount
         "Tax Amount":
-          Number(
-            taxAmount
-          ),
+          Number(taxAmount),
 
         "Amount":
           lineAmount,
+
+        "Amount*":
+          txn.IsTaxInclusive
+            ? "Tax Inclusive"
+            : "Tax Exclusive",
+
+        "Account":
+          line.Account?.DisplayID || "",
       });
     }
   }
@@ -408,6 +487,8 @@ export const flattenMYOBReceiveMoneyRaw = (items) => {
 //   URI, RowVersion
 // ─────────────────────────────────────────────────────────────────────────────
 export const flattenMYOBTransferMoneyRaw = (items) => {
+
+  console.log(items)
 
   return items
     .filter((txn) => {
@@ -437,11 +518,11 @@ export const flattenMYOBTransferMoneyRaw = (items) => {
 
         "Transfer from":
           txn.FromAccount?.DisplayID
-          ,
+        ,
 
         "Transfer to":
           txn.ToAccount?.DisplayID
-            ,
+        ,
 
         "Description":
           txn.Memo || "",
@@ -468,6 +549,7 @@ export const flattenMYOBTransferMoneyRaw = (items) => {
 //   "Line.Credit/Debit"  →  "Credit" | "Debit"
 // ─────────────────────────────────────────────────────────────────────────────
 export const flattenMYOBGeneralJournalRaw = (items) => {
+
   const rows = [];
 
   for (const txn of items) {
@@ -553,17 +635,15 @@ export const flattenMYOBGeneralJournalRaw = (items) => {
         taxAmount = 0;
       }
 
-      rows.push({
 
+      rows.push({
         // ───── TEMPLATE FIELDS ─────
 
-        "Journal Date*":
-          fmtDate(
-            txn.DateOccurred
-          ),
+        "UID":
+          txn.UID || "",
 
-        "Amount*":
-          signedAmount,
+        "Journal Date*":
+          fmtDate(txn.DateOccurred),
 
         "Summary":
           txn.DisplayID || "",
@@ -580,6 +660,23 @@ export const flattenMYOBGeneralJournalRaw = (items) => {
         "Account Name":
           line.Account?.Name || "",
 
+        "Contact":
+          "",
+
+        "ForeignCurrency":
+          txn?.ForeignCurrency?.Code || "",
+
+        "CurrencyExchangeRate":
+          txn?.CurrencyExchangeRate,
+
+        "Trans Type":
+          "Journal",
+
+        "classification":
+          line.Job?.Name ||
+          line.Job?.Number ||
+          "",
+
         // ✅ debit
         "Debit":
           debitAmount,
@@ -592,21 +689,75 @@ export const flattenMYOBGeneralJournalRaw = (items) => {
           taxCode,
 
         "Tax":
-          Number(
-            taxAmount.toFixed(2)
-          ),
+          Number(taxAmount),
 
-        "Contact":
-          "",
-
-        "Trans Type":
-          "Journal",
-
-        "classification":
-          line.Job?.Name ||
-          line.Job?.Number ||
-          "",
+        "Amount*":
+          signedAmount,
       });
+
+      // rows.push({
+
+      //   // ───── TEMPLATE FIELDS ─────
+
+      //   "Journal Date*":
+      //     fmtDate(
+      //       txn.DateOccurred
+      //     ),
+
+      //   "Amount*":
+      //     signedAmount,
+
+      //   "Summary":
+      //     txn.DisplayID || "",
+
+      //   "Narration":
+      //     txn.Memo || "",
+
+      //   "Description":
+      //     line.Memo || "",
+
+      //   "Account":
+      //     line.Account?.DisplayID || "",
+
+      //   "Account Name":
+      //     line.Account?.Name || "",
+
+      //   // ✅ debit
+      //   "Debit":
+      //     debitAmount,
+
+      //   // ✅ credit
+      //   "Credit":
+      //     creditAmount,
+
+      //   "Tax code":
+      //     taxCode,
+
+      //   "Tax":
+      //     Number(
+      //       taxAmount
+      //     ),
+
+      //   "Contact":
+      //     "",
+
+      //   "ForeignCurrency":
+      //     txn?.ForeignCurrency?.Code,
+
+      //   "Trans Type":
+      //     "Journal",
+
+      //   "classification":
+      //     line.Job?.Name ||
+      //     line.Job?.Number ||
+      //     "",
+
+      //   "CurrencyExchangeRate": 
+      //     txn?.CurrencyExchangeRate,
+
+      //   "UID":
+      //     txn.UID || "",
+      // });
     }
   }
 

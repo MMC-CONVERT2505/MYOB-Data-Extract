@@ -34,9 +34,12 @@ export const companyAPI = {
 
 // ── Data Extraction ──────────────────────────────────────────
 export const extractionAPI = {
-  extract:          (body)     => api.post("/api/extract", body),
-  fetchReference:   (endpoint) => api.get(`/api/extract/${endpoint}`),
+  extract:            (body)     => api.post("/api/extract", body),
+  fetchReference:     (endpoint) => api.get(`/api/extract/${endpoint}`),
   // endpoints: "customers" | "suppliers" | "accounts" | "jobs" | "tax-codes" | "inventory-items"
+  getCreditNotes:     (p = {})   => api.get("/api/extract/credit-notes", { params: p }),
+  getVendorCredits:   (p = {})   => api.get("/api/extract/vendor-credits", { params: p }),
+  getCreditRefunds:   (p = {})   => api.get("/api/extract/credit-refunds", { params: p }),
 };
 
 // ── Extraction History ────────────────────────────────────────

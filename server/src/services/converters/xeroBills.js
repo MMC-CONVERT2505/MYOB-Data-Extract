@@ -111,7 +111,6 @@ export const flattenXeroBills = (bills, subType) => {
           contactName,
 
         "*InvoiceNumber":
-          bill.SupplierInvoiceNumber ||
           bill.Number ||
           "",
 
@@ -186,6 +185,8 @@ export const flattenXeroBills = (bills, subType) => {
 
         "Exchange Rate":
           bill.CurrencyExchangeRate ?? 1,
+
+        "UID": bill?.UID,
       });
     }
   }
@@ -242,9 +243,84 @@ export const flattenXeroBillPayments = (payments) => {
         "Reference": p.PaymentNumber || p.Memo || "",
 
         "CurrencyRate": p.CurrencyExchangeRate ?? 1,
+
+        "UID": p?.UID,
       });
     }
   }
 
+  return rows;
+};
+
+// ── XERO Credit Notes — 19 columns ────────────────────────────
+export const flattenXEROCreditNote = (creditNotes) => {
+  const rows = [];
+  for (const cn of creditNotes) {
+    const lines = cn.Lines?.length ? cn.Lines : [{}];
+    for (const line of lines) {
+      rows.push({
+        "UID":                cn.UID || "",
+        "CreditFromInvoice":  cn.CreditFromInvoice?.Number || "",
+        "Customer":           cleanNone(cn.Customer?.Name || cn.Customer?.CompanyName || cn.Customer?.DisplayID),
+        "Number":             cn.Number || "",
+        "Date":               fmtDate(cn.Date),
+        "CreditAmount":       cn.Amount ?? cn.CreditAmount ?? "",
+        "Memo":               cn.Memo || "",
+        "Invoice Id":         line.Sale?.Number || line.Invoice?.Number || "",
+        "AmountApplied":      line.AmountApplied ?? "",
+        "ForeignCurrency":    cn.ForeignCurrency?.Code || "",
+      });
+    }
+  }
+  return rows;
+};
+
+// ── Xero Vendor Credits ───────────────────────────────────────
+// Endpoint: /Purchase/DebitSettlement
+// NOTE: settlement record — one row per Bill this credit was applied to.
+export const flattenXeroVendorCredit = (items) => {
+  const rows = [];
+  for (const vc of items) {
+    const lines = vc.Lines?.length ? vc.Lines : [{}];
+    const contactName = cleanNone(
+      vc.Supplier?.CompanyName || vc.Supplier?.Name || vc.Supplier?.DisplayID
+    );
+
+    for (const line of lines) {
+      rows.push({
+        "ContactName":    contactName,
+        "Number": vc.Number || "",
+        "Date":           fmtDate(vc.Date),
+        "Debit From Bill No": vc?.DebitFromBill?.Number || "",
+        "BillNumber":     line.Purchase?.Number || "",
+        "AppliedAmount":  line.AmountApplied ?? "",
+        "TotalAmount":    vc.Amount ?? vc.DebitAmount ?? "",
+        "Reference":      vc.Memo || "",
+        "CurrencyCode":   vc.ForeignCurrency?.Code || "AUD",
+      });
+    }
+  }
+  return rows;
+};
+
+// ── Xero Debit Refund ─────────────────────────────────────────
+// Endpoint: /Purchase/DebitRefund
+export const flattenXeroDebitRefund = (items) => {
+  const rows = [];
+  for (const dr of items) {
+    const contactName = cleanNone(
+      dr.Supplier?.CompanyName || dr.Supplier?.Name || dr.Supplier?.DisplayID
+    );
+
+    rows.push({
+      "ContactName": contactName,
+      "Date":        fmtDate(dr.Date),
+      "BillNumber":  dr.Bill?.Number || "",
+      "Amount":      dr.Amount ?? "",
+      "Bank":        dr.Account?.DisplayID || "",
+      "Reference":   dr.Number || dr.Memo || "",
+      "CurrencyCode": dr.ForeignCurrency?.Code || "AUD",
+    });
+  }
   return rows;
 };
