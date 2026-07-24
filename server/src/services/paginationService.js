@@ -18,7 +18,6 @@ function withPaging(baseEndpoint, top, skip) {
 
 export async function fetchAllPages(dbUser, userId, baseEndpoint, options = {}) {
   const {
-    pageSize = DEFAULT_PAGE_SIZE,
     onBatch = null,
     estimatedTotal = null,
   } = options;
@@ -29,6 +28,7 @@ export async function fetchAllPages(dbUser, userId, baseEndpoint, options = {}) 
   let skip = 0;
   let reachedEnd = false;
   let poolSize = Math.max(1, options.poolSize ?? DEFAULT_POOL_SIZE);
+  let pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE; // now mutable — can shrink on repeated timeouts
 
   while (!reachedEnd) {
     const batchSkips = Array.from({ length: poolSize }, (_, i) => skip + i * pageSize);
@@ -49,7 +49,23 @@ export async function fetchAllPages(dbUser, userId, baseEndpoint, options = {}) 
         poolSize = nextPoolSize;
         continue;
       }
-      throw batchErr;
+
+      // Already fully sequential (poolSize=1) and STILL failing — this
+      // means MYOB itself is timing out on the query, not on concurrency
+      // (common for heavy joined endpoints like /Purchase/Bill/Item at
+      // deep offsets). Shrink the page size so MYOB has less work to do
+      // per request, instead of failing the whole extraction.
+      if (pageSize > 100) {
+        const nextPageSize = Math.max(100, Math.floor(pageSize / 2));
+        console.warn(
+          `⚠️ ${label}: still failing sequentially (${batchErr.message}); ` +
+          `shrinking page size ${pageSize} → ${nextPageSize} and retrying from offset ${skip}`
+        );
+        pageSize = nextPageSize;
+        continue;
+      }
+
+      throw batchErr; // even a 100-row page fails — real/unrecoverable error
     }
 
     for (const pageItems of pages) {

@@ -23,7 +23,7 @@ const RETRYABLE_CODES = new Set(["ECONNABORTED", "ETIMEDOUT", "ECONNRESET", "ENO
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function withRetry(fn, opts = {}) {
-  const { retries = 4, baseDelayMs = 500, label = "request" } = opts;
+ const { retries = 5, baseDelayMs = 500, maxDelayMs = 15000, label = "request" } = opts;
 
   let attempt = 0;
   while (true) {
@@ -40,7 +40,7 @@ export async function withRetry(fn, opts = {}) {
 
       const retryAfterHeader = err.response?.headers?.["retry-after"];
       const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : null;
-      const backoffMs = retryAfterMs || baseDelayMs * 2 ** attempt;
+      const backoffMs = retryAfterMs || Math.min(maxDelayMs, baseDelayMs * 2 ** attempt);
 
       attempt++;
       console.warn(
