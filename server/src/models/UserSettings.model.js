@@ -39,7 +39,7 @@ const userSettingsSchema = new mongoose.Schema(
     // Resets automatically when a new day begins (checked in myobService).
     dailyApiLimit: {
       type:    Number,
-      default: 500,         // our internal budget per user per day
+      default: 5000,         // our internal budget per user per day
     },
 
     dailyApiCount: {

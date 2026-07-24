@@ -1241,7 +1241,7 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
             : "Tax Exclusive",
 
         "Account":
-          line.Account?.DisplayID || "",
+          line.Account?.DisplayID ||  txn.Account?.DisplayID || "",
       });
     }
   }

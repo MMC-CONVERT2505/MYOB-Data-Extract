@@ -1,12 +1,13 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import LoginPage  from "./pages/LoginPage";
-import Dashboard  from "./pages/Dashboard";
-import AuthError  from "./pages/AuthError";
-import History    from "./pages/History";
-import Settings   from "./pages/Settings";
-import Layout     from "./components/Layout";
+import LoginPage from "./pages/LoginPage";
+import Dashboard from "./pages/Dashboard";
+import AuthError from "./pages/AuthError";
+import History from "./pages/History";
+import Settings from "./pages/Settings";
+import Summary from "./pages/Summary";
+import Layout from "./components/Layout";
 
 function PrivateRoute({ children }) {
   const { authenticated, loading } = useAuth();
@@ -18,7 +19,7 @@ function PrivateRoute({ children }) {
           M
         </div>
         <div className="flex gap-1.5">
-          {[0,1,2].map(i => (
+          {[0, 1, 2].map(i => (
             <div key={i} className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce"
               style={{ animationDelay: `${i * 0.15}s` }} />
           ))}
@@ -32,9 +33,9 @@ function PrivateRoute({ children }) {
 function App() {
   return (
     <AuthProvider>
-     <BrowserRouter basename="/myob-app">
+      <BrowserRouter basename="/myob-app">
         <Routes>
-          <Route path="/"           element={<LoginPage />} />
+          <Route path="/" element={<LoginPage />} />
           <Route path="/auth/error" element={<AuthError />} />
 
           <Route path="/dashboard" element={
@@ -52,6 +53,12 @@ function App() {
           <Route path="/settings" element={
             <PrivateRoute>
               <Layout><Settings /></Layout>
+            </PrivateRoute>
+          } />
+
+          <Route path="/summary" element={
+            <PrivateRoute>
+              <Layout><Summary /></Layout>
             </PrivateRoute>
           } />
 
