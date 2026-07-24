@@ -23,7 +23,7 @@ const RETRYABLE_CODES = new Set(["ECONNABORTED", "ETIMEDOUT", "ECONNRESET", "ENO
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function withRetry(fn, opts = {}) {
- const { retries = 5, baseDelayMs = 500, maxDelayMs = 15000, label = "request" } = opts;
+ const { retries = 3, baseDelayMs = 500, maxDelayMs = 15000, label = "request" } = opts;
 
   let attempt = 0;
   while (true) {
