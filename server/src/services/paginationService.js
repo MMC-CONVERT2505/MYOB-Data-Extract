@@ -61,7 +61,7 @@ export async function fetchAllPages(dbUser, userId, baseEndpoint, options = {}) 
         options.poolSize ??
         (HEAVY_ENDPOINTS.has(endpointPath) ? 1 : DEFAULT_POOL_SIZE)
     );
-    const endpointPath = baseEndpoint.split("?")[0];
+    
 
     let pageSize =
         options.pageSize ??
