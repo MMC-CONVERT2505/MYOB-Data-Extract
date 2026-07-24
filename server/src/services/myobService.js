@@ -277,7 +277,7 @@ async function refreshTokenOnce(dbUser, userId) {
 
 // ── Make authenticated MYOB API request ──────────────────────
 // ✅ Now increments dailyApiCount in DB on every successful call
-export const myobRequest = async (dbUser, userId, method, endpoint, body = null) => {
+export const myobRequest = async (dbUser, userId, method, endpoint, body = null, retryOptions = {}) => {
   const accessToken = await getValidToken(dbUser, userId);
 
   if (!dbUser.businessId) {
@@ -307,6 +307,7 @@ export const myobRequest = async (dbUser, userId, method, endpoint, body = null)
   try {
     const { data } = await withRetry(() => axios(config), {
       label: `MYOB ${method} ${endpoint}`,
+       ...retryOptions,
     });
 
     incrementApiCount(userId).catch(() => {});

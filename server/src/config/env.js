@@ -47,7 +47,7 @@ const env = {
   MYOB_API_BASE:  "https://api.myob.com/accountright",
 
   MYOB_SCOPES: API_KEY_TYPE === "new" ? NEW_SCOPES : OLD_SCOPES,
-  MYOB_REQUEST_TIMEOUT_MS: Number(process.env.MYOB_REQUEST_TIMEOUT_MS) || 60000,
+  MYOB_REQUEST_TIMEOUT_MS: Number(process.env.MYOB_REQUEST_TIMEOUT_MS) || 260000,
   MYOB_REQUEST_POOL_SIZE: Number(process.env.MYOB_REQUEST_POOL_SIZE) || 5,
 };
 

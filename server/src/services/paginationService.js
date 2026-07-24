@@ -133,13 +133,21 @@ export async function fetchAllPages(dbUser, userId, baseEndpoint, options = {}) 
 
     return collected || [];
 }
-
 async function fetchOnePage(dbUser, userId, baseEndpoint, pageSize, skip) {
     console.log(
         `Fetching ${baseEndpoint} | top=${pageSize} | skip=${skip}`
     );
     const url = withPaging(baseEndpoint, pageSize, skip);
-    const data = await myobRequest(dbUser, userId, "GET", url);
+    // Only 1 retry at the single-page level — if a page is genuinely
+    // slow (heavy joined endpoints like /Purchase/Bill/Item), we don't
+    // want to burn 3× full timeouts (~3 min) on one page before the
+    // outer fetchAllPages loop gets a chance to shrink pageSize/poolSize.
+    // Fail fast here, let the adaptive loop above handle real recovery.
+    const data = await myobRequest(dbUser, userId, "GET", url, null, {
+        retries: 1,
+        baseDelayMs: 300,
+        label: `MYOB GET ${baseEndpoint} (skip=${skip})`,
+    });
     const items = data?.Items || [];
     return items.length === 0 ? null : items;
-}
+} 
