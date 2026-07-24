@@ -60,3 +60,11 @@ export const settingsAPI = {
 export const usageAPI = {
   get: () => api.get("/api/usage"),
 };
+
+
+// ── Migration Summary (Get Summary) ─────────────────────────────  ← ADDED BLOCK
+export const summaryAPI = {
+  getProfile:      ()     => api.get("/api/summary/profile"),
+  getTransactions: (body) => api.post("/api/summary/transactions", body),
+  getFull:         (body) => api.post("/api/summary", body),
+};

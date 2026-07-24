@@ -52,8 +52,8 @@ export const getApiUsage = async (userId) => {
     if (!settings) {
       return {
         used:      0,
-        limit:     500,
-        remaining: 500,
+        limit:     5000,
+        remaining: 5000,
         percent:   0,
         resetDate: today,
         isNewDay:  true,

@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
+import { Link } from "react-router-dom"
 import { extractionAPI, settingsAPI } from "../services/api";
 import {
   BarChart3, Clock, CheckCircle, FileText,
   FileDown, ChevronDown, Calendar, ArrowUpRight,
   CheckCircle2, AlertCircle, FileJson, Zap,
-  FileSpreadsheet, Bell, Database, TrendingUp, Sparkles, X
+  FileSpreadsheet, Bell, Database, TrendingUp, Sparkles, X, PieChart
 } from "lucide-react";
 
 // const OUTPUT_FORMATS = [
@@ -40,17 +41,17 @@ const REFERENCE_TYPES = new Set([
 const DATA_TYPES = [
   { key: "invoices", label: "Invoices", subtypes: INVOICE_SUBTYPES, color: "#6366f1" },
   { key: "bills", label: "Bills", subtypes: BILL_SUBTYPES, color: "#f59e0b" },
-  { key: "creditNotes",     label: "Invoice Allocation",     subtypes: null,             color: "#10b981" },
-  { key: "vendorCredits",   label: "Bill Allocation",   subtypes: null,             color: "#3b82f6" },
-  { key: "debitRefunds",    label: "Debit Refunds",   subtypes: null,             color: "#c026d3" },
+  { key: "creditNotes", label: "Invoice Allocation", subtypes: null, color: "#10b981" },
+  { key: "vendorCredits", label: "Bill Allocation", subtypes: null, color: "#3b82f6" },
+  { key: "debitRefunds", label: "Debit Refunds", subtypes: null, color: "#c026d3" },
   { key: "creditRefunds", label: "Credit Refunds", subtypes: null, color: "#d946ef" },
   { key: "invoicePayments", label: "Invoice Payments", subtypes: null, color: "#8b5cf6" },
   { key: "billPayments", label: "Bill Payments", subtypes: null, color: "#ec4899" },
   { key: "banking", label: "Banking", subtypes: BANKING_SUBTYPES, color: "#14b8a6", bankingLabels: BANKING_LABELS },
   { key: "generalJournal", label: "Journal", subtypes: null, color: "#f97316" },
   { key: "quotes", label: "Quotes", subtypes: QUOTE_SUBTYPES, color: "#06b6d4" },
-  { key: "salesOrders",     label: "Sales Orders",     subtypes: ORDER_SUBTYPES,   color: "#0891b2" },
-  { key: "purchaseOrders",  label: "Purchase Orders",  subtypes: ORDER_SUBTYPES,   color: "#7c3aed" },
+  { key: "salesOrders", label: "Sales Orders", subtypes: ORDER_SUBTYPES, color: "#0891b2" },
+  { key: "purchaseOrders", label: "Purchase Orders", subtypes: ORDER_SUBTYPES, color: "#7c3aed" },
   // ── Reference Data ──────────────────────────────────────────
   { key: "items", label: "Items", subtypes: null, color: "#0ea5e9" },
   { key: "customers", label: "Customers", subtypes: null, color: "#a855f7" },
@@ -512,6 +513,31 @@ export default function Dashboard() {
       </div>
 
       <div className="p-8 max-w-7xl mx-auto">
+
+        {/* Get Summary banner */}                                          {/* ← ADDED BLOCK START */}
+        <Link
+          to="/summary"
+          className="group w-full flex items-center justify-between rounded-2xl px-5 py-4 mb-6 transition-all duration-300 hover:-translate-y-0.5"
+          style={{
+            background: "linear-gradient(120deg,#0d9488,#14b8a6 60%,#2dd4bf)",
+            boxShadow: "0 10px 26px rgba(13,148,136,0.30)",
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-white">
+              <PieChart size={20} />
+            </span>
+            <div className="leading-tight">
+              <p className="text-[14.5px] font-semibold text-white">Get Summary</p>
+              <p className="text-[12px] text-white/80">
+                Chart of accounts, banks &amp; credit cards, transaction counts for a conversion period
+              </p>
+            </div>
+          </div>
+          <span className="text-white/80 transition-transform duration-300 group-hover:translate-x-1">
+            <ArrowUpRight size={20} />
+          </span>
+        </Link>
 
         {/* Stat Cards */}
         <div className={`grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6 transition-all duration-500 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>

@@ -6,6 +6,7 @@ import Dashboard  from "./pages/Dashboard";
 import AuthError  from "./pages/AuthError";
 import History    from "./pages/History";
 import Settings   from "./pages/Settings";
+import Summary    from "./pages/Summary";
 import Layout     from "./components/Layout";
 
 function PrivateRoute({ children }) {
@@ -52,6 +53,12 @@ function App() {
           <Route path="/settings" element={
             <PrivateRoute>
               <Layout><Settings /></Layout>
+            </PrivateRoute>
+          } />
+            
+          <Route path="/summary" element={
+            <PrivateRoute>
+              <Layout><Summary /></Layout>
             </PrivateRoute>
           } />
 

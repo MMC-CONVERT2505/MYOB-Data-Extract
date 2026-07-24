@@ -13,6 +13,7 @@ import historyRoutes    from "./routes/historyRoutes.js";
 import settingsRoutes   from "./routes/settingsRoutes.js";
 import usageRoutes      from "./routes/usageRoutes.js";
 import downloadRoutes   from "./routes/downloadRoutes.js";
+import summaryRoutes    from "./routes/summaryRoutes.js";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -63,6 +64,7 @@ app.use("/api/history",  historyRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/usage",    usageRoutes);
 app.use("/api/download", downloadRoutes);
+app.use("/api/summary",  summaryRoutes); 
 
 // ── Health Check ─────────────────────────────────────────────
 app.get("/health", (req, res) => {

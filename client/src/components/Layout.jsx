@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import {
   LayoutDashboard, LogOut, Info, ChevronDown,
   Search, X, History, Settings, Building2,
-  Sparkles, Zap, AlertTriangle, Activity
+  Sparkles, Zap, AlertTriangle, Activity, PieChart
 } from "lucide-react";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import axios from "axios";
@@ -153,6 +153,7 @@ export default function Layout({ children }) {
 
   const navItems = [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "#6366f1" },
+    { to: "/summary",   icon: PieChart,        label: "Get Summary", color: "#0d9488" }, 
     { to: "/history",   icon: History,         label: "History",   color: "#f59e0b" },
     { to: "/settings",  icon: Settings,        label: "Settings",  color: "#10b981" },
   ];

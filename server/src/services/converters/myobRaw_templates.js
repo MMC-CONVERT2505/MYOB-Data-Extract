@@ -3,6 +3,8 @@ import { cleanNone, fmtDate } from "../helpers.js";
 
 export const flattenMYOBSpendMoneyRaw = (items) => {
 
+  console.log(JSON.stringify(items, null, 2))
+
   const rows = [];
 
   for (const txn of items) {
@@ -194,7 +196,7 @@ export const flattenMYOBSpendMoneyRaw = (items) => {
             : "Tax Exclusive",
 
         "Account":
-          line.Account?.DisplayID || "",
+          line.Account?.DisplayID ||  txn.Account?.DisplayID || "",
       });
 
     }
