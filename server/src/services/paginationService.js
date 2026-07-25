@@ -18,7 +18,7 @@ const ENDPOINT_PAGE_SIZE = {
     "/Purchase/Order": 300,
     "/Sale/Order": 300,
 };
-const DEFAULT_POOL_SIZE = env.MYOB_REQUEST_POOL_SIZE; // configurable, default 5
+const DEFAULT_POOL_SIZE = env.MYOB_REQUEST_POOL_SIZE;
 
 function withPaging(baseEndpoint, top, skip) {
     const [path, query = ""] = baseEndpoint.split("?");
@@ -42,6 +42,7 @@ export async function fetchAllPages(dbUser, userId, baseEndpoint, options = {}) 
     let fetchedCount = 0;
     let skip = 0;
     let reachedEnd = false;
+    let myobTotalCount = 0;
     const endpointPath = baseEndpoint.split("?")[0];
 
     const HEAVY_ENDPOINTS = new Set([
@@ -49,7 +50,6 @@ export async function fetchAllPages(dbUser, userId, baseEndpoint, options = {}) 
         "/Purchase/Bill/Service",
         "/Purchase/Bill/Professional",
         "/Purchase/Bill/Miscellaneous",
-
         "/Sale/Invoice/Item",
         "/Sale/Invoice/Service",
         "/Sale/Invoice/Professional",
@@ -61,7 +61,6 @@ export async function fetchAllPages(dbUser, userId, baseEndpoint, options = {}) 
         options.poolSize ??
         (HEAVY_ENDPOINTS.has(endpointPath) ? 1 : DEFAULT_POOL_SIZE)
     );
-    
 
     let pageSize =
         options.pageSize ??
@@ -88,11 +87,6 @@ export async function fetchAllPages(dbUser, userId, baseEndpoint, options = {}) 
                 continue;
             }
 
-            // Already fully sequential (poolSize=1) and STILL failing — this
-            // means MYOB itself is timing out on the query, not on concurrency
-            // (common for heavy joined endpoints like /Purchase/Bill/Item at
-            // deep offsets). Shrink the page size so MYOB has less work to do
-            // per request, instead of failing the whole extraction.
             if (pageSize > 100) {
                 const nextPageSize = Math.max(100, Math.floor(pageSize / 2));
                 console.warn(
@@ -103,24 +97,40 @@ export async function fetchAllPages(dbUser, userId, baseEndpoint, options = {}) 
                 continue;
             }
 
-            throw batchErr; // even a 100-row page fails — real/unrecoverable error
+            throw batchErr;
         }
 
-        for (const pageItems of pages) {
-            if (pageItems === null) {
+        for (const pageResult of pages) {
+            if (pageResult === null) {
                 reachedEnd = true;
                 break;
+            }
+
+            // pageResult is now { items, count } — extract both.
+            const pageItems = Array.isArray(pageResult) ? pageResult : pageResult.items;
+            const pageCount = Array.isArray(pageResult) ? 0 : (pageResult.count ?? 0);
+
+            if (pageItems === null || pageItems.length === 0) {
+                reachedEnd = true;
+                break;
+            }
+
+            // Capture the MYOB total count from the first page.
+            if (myobTotalCount === 0 && pageCount > 0) {
+                myobTotalCount = pageCount;
             }
 
             fetchedCount += pageItems.length;
 
             if (onBatch) {
-                await onBatch(pageItems);
+                await onBatch(pageItems, { total: myobTotalCount });
             } else {
                 collected.push(...pageItems);
             }
 
-            const totalLabel = estimatedTotal ? `/${estimatedTotal}` : "";
+            const totalLabel = (estimatedTotal || myobTotalCount)
+                ? `/${estimatedTotal || myobTotalCount}`
+                : "";
             console.log(`Fetched: ${fetchedCount}${totalLabel} (${label})`);
 
             if (pageItems.length < pageSize) {
@@ -133,21 +143,16 @@ export async function fetchAllPages(dbUser, userId, baseEndpoint, options = {}) 
 
     return collected || [];
 }
+
 async function fetchOnePage(dbUser, userId, baseEndpoint, pageSize, skip) {
-    console.log(
-        `Fetching ${baseEndpoint} | top=${pageSize} | skip=${skip}`
-    );
+    console.log(`Fetching ${baseEndpoint} | top=${pageSize} | skip=${skip}`);
     const url = withPaging(baseEndpoint, pageSize, skip);
-    // Only 1 retry at the single-page level — if a page is genuinely
-    // slow (heavy joined endpoints like /Purchase/Bill/Item), we don't
-    // want to burn 3× full timeouts (~3 min) on one page before the
-    // outer fetchAllPages loop gets a chance to shrink pageSize/poolSize.
-    // Fail fast here, let the adaptive loop above handle real recovery.
     const data = await myobRequest(dbUser, userId, "GET", url, null, {
         retries: 1,
         baseDelayMs: 300,
         label: `MYOB GET ${baseEndpoint} (skip=${skip})`,
     });
     const items = data?.Items || [];
-    return items.length === 0 ? null : items;
-} 
+    if (items.length === 0) return null;
+    return { items, count: data?.Count ?? 0 };
+}
