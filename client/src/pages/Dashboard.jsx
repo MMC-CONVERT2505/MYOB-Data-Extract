@@ -218,7 +218,49 @@ function TypeButton({ dt, isActive, selectedSub, onActivate }) {
 }
 
 // ── Download Button Group ─────────────────────────────────────
-function DownloadGroup({ label, count, items, filename, color = "#6366f1" }) {
+function DownloadGroup({ label, count, items, filename, color = "#6366f1", asyncCacheKey, asyncOutputFormat }) {
+
+  // For async jobs: download from server cache instead of client-side items array.
+  const handleAsyncDownload = async (format) => {
+    try {
+      const ck = asyncCacheKey;
+      const axios = (await import("axios")).default;
+
+      if (format === "excel") {
+        const res = await axios.post("/myob-api/api/download/excel", {
+          dataType:     ck.dataType,
+          subType:      ck.subType,
+          outputFormat: asyncOutputFormat || "raw",
+          startDate:    ck.startDate || "reference",
+          endDate:      ck.endDate   || "reference",
+        }, { withCredentials: true, responseType: "blob" });
+        const fname = `${asyncOutputFormat || "raw"}_${ck.dataType}${ck.subType ? "_" + ck.subType : ""}_${ck.startDate || "ref"}_${ck.endDate || "ref"}.xlsx`;
+        const url = URL.createObjectURL(res.data);
+        Object.assign(document.createElement("a"), { href: url, download: fname }).click();
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      // For CSV/JSON: fetch from server then convert client-side
+      const res = await axios.post("/myob-api/api/download/excel", {
+        dataType:     ck.dataType,
+        subType:      ck.subType,
+        outputFormat: asyncOutputFormat || "raw",
+        startDate:    ck.startDate || "reference",
+        endDate:      ck.endDate   || "reference",
+      }, { withCredentials: true, responseType: "blob" });
+      // For CSV/JSON we can't easily convert xlsx blob — just download as Excel
+      const fname = `${asyncOutputFormat || "raw"}_${ck.dataType}${ck.subType ? "_" + ck.subType : ""}.xlsx`;
+      const url = URL.createObjectURL(res.data);
+      Object.assign(document.createElement("a"), { href: url, download: fname }).click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Download failed: " + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const isAsync = !!asyncCacheKey;
+
   return (
     <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
       <div className="flex items-center gap-2 mb-4">
@@ -232,9 +274,9 @@ function DownloadGroup({ label, count, items, filename, color = "#6366f1" }) {
       </div>
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: "CSV",   onClick: () => dlCSV(items, filename),   bg: "white",        border: "#e2e8f0",       color: "#64748b" },
-          { label: "Excel", onClick: () => dlExcel(items, filename), bg: "#10b98112",    border: "#10b98130",     color: "#059669" },
-          { label: "JSON",  onClick: () => dlJSON(items, filename),  bg: color + "12",   border: color + "30",    color: color },
+          { label: "CSV",   fmt: "csv",   onClick: isAsync ? () => handleAsyncDownload("csv")   : () => dlCSV(items, filename),   bg: "white",        border: "#e2e8f0",    color: "#64748b" },
+          { label: "Excel", fmt: "excel", onClick: isAsync ? () => handleAsyncDownload("excel") : () => dlExcel(items, filename), bg: "#10b98112",    border: "#10b98130",  color: "#059669" },
+          { label: "JSON",  fmt: "json",  onClick: isAsync ? () => handleAsyncDownload("json")  : () => dlJSON(items, filename),  bg: color + "12",   border: color + "30", color: color },
         ].map(({ label: btnLabel, onClick, bg, border, color: btnColor }) => (
           <button key={btnLabel} onClick={onClick}
             className="flex items-center justify-center gap-1.5 py-3 rounded-xl text-xs font-bold transition-all hover:-translate-y-0.5 hover:shadow-sm border"
@@ -325,33 +367,41 @@ function ResultModal({ result, outputFormat, myobFname, convertedFname, activeTy
                 items={result.items}
                 filename={myobFname}
                 color="#6366f1"
+                asyncCacheKey={result._asyncCacheKey}
+                asyncOutputFormat={result._asyncOutputFormat}
               />
             )}
-            {outputFormat === "qbo" && result.converted && (
+            {outputFormat === "qbo" && (result.converted || result._asyncCacheKey) && (
               <DownloadGroup
                 label="QuickBooks Online (QBO)"
-                count={result.converted.count}
-                items={result.converted.items}
+                count={result.converted?.count ?? result.count}
+                items={result.converted?.items ?? []}
                 filename={convertedFname}
                 color="#2ca01c"
+                asyncCacheKey={result._asyncCacheKey}
+                asyncOutputFormat={result._asyncOutputFormat}
               />
             )}
-            {outputFormat === "xero" && result.converted && (
+            {outputFormat === "xero" && (result.converted || result._asyncCacheKey) && (
               <DownloadGroup
                 label="Xero"
-                count={result.converted.count}
-                items={result.converted.items}
+                count={result.converted?.count ?? result.count}
+                items={result.converted?.items ?? []}
                 filename={convertedFname}
                 color="#13b5ea"
+                asyncCacheKey={result._asyncCacheKey}
+                asyncOutputFormat={result._asyncOutputFormat}
               />
             )}
-            {outputFormat === "reckon" && result.converted && (
+            {outputFormat === "reckon" && (result.converted || result._asyncCacheKey) && (
               <DownloadGroup
                 label="MYOB"
-                count={result.converted.count}
-                items={result.converted.items}
+                count={result.converted?.count ?? result.count}
+                items={result.converted?.items ?? []}
                 filename={convertedFname}
                 color="#f97316"
+                asyncCacheKey={result._asyncCacheKey}
+                asyncOutputFormat={result._asyncOutputFormat}
               />
             )}
           </div>
@@ -411,29 +461,24 @@ export default function Dashboard() {
         if (job.status === "successful") {
           clearPoll();
           setLoading(false);
-          // Trigger existing Excel-download flow via the download endpoint.
-          // The resultCacheKey contains the same params the backend cached.
           const ck = job.resultCacheKey;
           if (ck) {
-            try {
-              const dlRes = await import("axios").then(({ default: axios }) =>
-                axios.post("/myob-api/api/download/excel", {
-                  dataType:     ck.dataType,
-                  subType:      ck.subType,
-                  outputFormat: job.outputFormat,
-                  startDate:    ck.startDate || "reference",
-                  endDate:      ck.endDate   || "reference",
-                  jobId:        asyncJob.jobId,
-                }, { withCredentials: true, responseType: "blob" })
-              );
-              const fname = `${job.outputFormat}_${ck.dataType}${ck.subType ? "_" + ck.subType : ""}_${ck.startDate}_${ck.endDate}.xlsx`;
-              const url = URL.createObjectURL(dlRes.data);
-              Object.assign(document.createElement("a"), { href: url, download: fname }).click();
-              URL.revokeObjectURL(url);
-            } catch (dlErr) {
-              setError("Job completed but Excel download failed: " + (dlErr.response?.data?.error || dlErr.message));
-            }
+            // Show the same result modal as sync — with async cache key
+            // stored so download buttons can call the server endpoint.
+            setResult({
+              count:              job.progress?.fetched ?? 0,
+              fromCache:          false,
+              dataType:           ck.dataType,
+              subType:            ck.subType,
+              outputFormat:       job.outputFormat,
+              _asyncCacheKey:     ck,
+              _asyncOutputFormat: job.outputFormat,
+              items:              [],
+              converted:          null,
+            });
+            setShowModal(true);
           }
+          setAsyncJob(null);
           setHistory(prev => prev.map(h =>
             h.asyncJobId === jobId
               ? { ...h, count: job.progress?.fetched ?? 0, status: "Success" }
@@ -818,15 +863,20 @@ export default function Dashboard() {
                       <div
                         className="h-full rounded-full transition-all duration-700"
                         style={{
-                          width: `${asyncJob.progress?.percent ?? 0}%`,
+                          width: `${Math.max(
+                            asyncJob.progress?.percent ?? 0,
+                            asyncJob.progress?.fetched > 0 ? 2 : 0
+                          )}%`,
                           background: "linear-gradient(90deg, #059669, #10b981)",
                         }}
                       />
                     </div>
                     <p className="text-xs text-emerald-600 mt-1.5">
-                      {asyncJob.progress?.fetched > 0
-                        ? `Fetched: ${asyncJob.progress.fetched.toLocaleString()} records — polling every 15 s`
-                        : "Polling every 15 s — you can leave this tab open"}
+                      {asyncJob.progress?.total > 0
+                        ? `Fetched: ${(asyncJob.progress.fetched ?? 0).toLocaleString()} / ${asyncJob.progress.total.toLocaleString()} records — polling every 15s`
+                        : asyncJob.progress?.fetched > 0
+                          ? `Fetched: ${asyncJob.progress.fetched.toLocaleString()} records — calculating total…`
+                          : "Starting extraction… polling every 15s"}
                     </p>
                     <p className="text-[10px] text-emerald-500 mt-0.5">
                       Job ID: {asyncJob.jobId} · Excel will download automatically when ready.
