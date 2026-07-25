@@ -80,6 +80,6 @@ export const getApiUsage = async (userId) => {
     };
   } catch (err) {
     console.error("⚠️ getApiUsage error:", err.message);
-    return { used: 0, limit: 500, remaining: 500, percent: 0 };
+    return { used: 0, limit: 5000, remaining: 5000, percent: 0 };
   }
 };

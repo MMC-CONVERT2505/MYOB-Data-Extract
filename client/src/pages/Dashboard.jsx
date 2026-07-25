@@ -421,8 +421,9 @@ export default function Dashboard() {
                   dataType:     ck.dataType,
                   subType:      ck.subType,
                   outputFormat: job.outputFormat,
-                  startDate:    ck.startDate,
-                  endDate:      ck.endDate,
+                  startDate:    ck.startDate || "reference",
+                  endDate:      ck.endDate   || "reference",
+                  jobId:        asyncJob.jobId,
                 }, { withCredentials: true, responseType: "blob" })
               );
               const fname = `${job.outputFormat}_${ck.dataType}${ck.subType ? "_" + ck.subType : ""}_${ck.startDate}_${ck.endDate}.xlsx`;
