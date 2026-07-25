@@ -40,6 +40,11 @@ export const extractionAPI = {
   getCreditNotes:     (p = {})   => api.get("/api/extract/credit-notes", { params: p }),
   getVendorCredits:   (p = {})   => api.get("/api/extract/vendor-credits", { params: p }),
   getCreditRefunds:   (p = {})   => api.get("/api/extract/credit-refunds", { params: p }),
+
+  // ── Async extraction (large datasets / 502-safe) ────────────
+  startAsync:  (body)    => api.post("/api/extract/async", body),
+  getJobStatus:(jobId)   => api.get(`/api/extract/status/${jobId}`),
+  listJobs:    ()        => api.get("/api/extract/jobs"),
 };
 
 // ── Extraction History ────────────────────────────────────────

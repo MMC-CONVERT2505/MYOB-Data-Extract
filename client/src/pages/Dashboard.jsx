@@ -390,6 +390,110 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // ── Async job state ───────────────────────────────────────────
+  const [asyncJob, setAsyncJob] = useState(null);
+  // asyncJob shape: { jobId, status, progress: { fetched, total, percent }, errorMessage }
+  const pollRef = useRef(null);
+
+  const clearPoll = () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  };
+
+  // Poll every 15 s while the job is queued or pending.
+  const startPolling = (jobId) => {
+    clearPoll();
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await extractionAPI.getJobStatus(jobId);
+        const job  = res.data;
+        setAsyncJob(job);
+
+        if (job.status === "successful") {
+          clearPoll();
+          setLoading(false);
+          // Trigger existing Excel-download flow via the download endpoint.
+          // The resultCacheKey contains the same params the backend cached.
+          const ck = job.resultCacheKey;
+          if (ck) {
+            try {
+              const dlRes = await import("axios").then(({ default: axios }) =>
+                axios.post("/myob-api/api/download/excel", {
+                  dataType:     ck.dataType,
+                  subType:      ck.subType,
+                  outputFormat: job.outputFormat,
+                  startDate:    ck.startDate,
+                  endDate:      ck.endDate,
+                }, { withCredentials: true, responseType: "blob" })
+              );
+              const fname = `${job.outputFormat}_${ck.dataType}${ck.subType ? "_" + ck.subType : ""}_${ck.startDate}_${ck.endDate}.xlsx`;
+              const url = URL.createObjectURL(dlRes.data);
+              Object.assign(document.createElement("a"), { href: url, download: fname }).click();
+              URL.revokeObjectURL(url);
+            } catch (dlErr) {
+              setError("Job completed but Excel download failed: " + (dlErr.response?.data?.error || dlErr.message));
+            }
+          }
+          setHistory(prev => prev.map(h =>
+            h.asyncJobId === jobId
+              ? { ...h, count: job.progress?.fetched ?? 0, status: "Success" }
+              : h
+          ));
+        }
+
+        if (job.status === "failed") {
+          clearPoll();
+          setLoading(false);
+          setError(job.errorMessage || "Async extraction failed.");
+          setHistory(prev => prev.map(h =>
+            h.asyncJobId === jobId ? { ...h, status: "Failed" } : h
+          ));
+        }
+      } catch (pollErr) {
+        console.warn("Job status poll error:", pollErr.message);
+      }
+    }, 15000);
+  };
+
+  // Clean up poll on unmount.
+  useEffect(() => { return () => clearPoll(); }, []);
+
+  const handleAsyncExtract = async () => {
+    if (!activeType) { setError("Please select a data type first."); return; }
+    clearPoll();
+    setLoading(true); setError(null); setResult(null); setShowModal(false); setAsyncJob(null);
+
+    const isRef = REFERENCE_TYPES.has(activeType);
+    const fname = `${activeType}${activeSub ? "_" + activeSub.toLowerCase() : ""}`;
+    const histEntry = {
+      id: Date.now(), label: fname, format: outputFormat.toUpperCase(),
+      date: fmtDate(new Date()), count: 0, status: "Queued", asyncJobId: null,
+    };
+    setHistory(prev => [histEntry, ...prev.slice(0, 9)]);
+
+    try {
+      const payload = {
+        dataType: activeType, subType: activeSub, outputFormat,
+        ...(!isRef && { startDate, endDate }),
+      };
+      const res = await extractionAPI.startAsync(payload);
+      const { jobId } = res.data;
+
+      const initialJob = { jobId, status: "queued", progress: { fetched: 0, total: 0, percent: 0 } };
+      setAsyncJob(initialJob);
+      setHistory(prev => prev.map(h =>
+        h.id === histEntry.id ? { ...h, asyncJobId: jobId } : h
+      ));
+      startPolling(jobId);
+    } catch (err) {
+      setLoading(false);
+      const msg = err.response?.data?.error || err.message || "Failed to start extraction.";
+      setError(msg);
+      setHistory(prev => prev.map(h =>
+        h.id === histEntry.id ? { ...h, status: "Failed" } : h
+      ));
+    }
+  };
+
   // ── Load settings on mount → apply to Dashboard state ────────
   useEffect(() => {
     setMounted(true);
@@ -658,9 +762,9 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* Extract Button */}
+                {/* Extract Button — sync (small/medium datasets) */}
                 <button onClick={handleExtract} disabled={loading || !activeType}
-                  className="w-full relative overflow-hidden flex items-center justify-center gap-2.5 py-4 rounded-xl text-sm font-bold text-white transition-all duration-300 group"
+                  className="w-full relative overflow-hidden flex items-center justify-center gap-2.5 py-3.5 rounded-xl text-sm font-bold text-white transition-all duration-300 group"
                   style={{
                     background: loading || !activeType ? "#c7d2fe" : `linear-gradient(135deg, ${activeColor}ee 0%, ${activeColor}bb 100%)`,
                     boxShadow: loading || !activeType ? "none" : `0 8px 20px -6px ${activeColor}88`,
@@ -673,14 +777,63 @@ export default function Dashboard() {
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                       style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)", transform: "skewX(-20deg)" }} />
                   )}
-                  {loading ? (
+                  {loading && !asyncJob ? (
                     <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /><span>Extracting data...</span></>
                   ) : (
-                    <><Zap size={16} /><span>Extract Data</span><ArrowUpRight size={15} className="opacity-70" /></>
+                    <><Zap size={15} /><span>Extract (Sync)</span><ArrowUpRight size={14} className="opacity-70" /></>
                   )}
                 </button>
 
-                {/* Re-open result button */}
+                {/* Extract Async button — for large datasets (502-safe) */}
+                <button onClick={handleAsyncExtract} disabled={loading || !activeType}
+                  className="w-full mt-2 relative overflow-hidden flex items-center justify-center gap-2.5 py-3.5 rounded-xl text-sm font-bold text-white transition-all duration-300"
+                  style={{
+                    background: loading || !activeType ? "#a7f3d0" : "linear-gradient(135deg, #059669ee 0%, #10b981bb 100%)",
+                    boxShadow: loading || !activeType ? "none" : "0 8px 20px -6px #10b98188",
+                    cursor: loading || !activeType ? "not-allowed" : "pointer",
+                  }}
+                  onMouseEnter={e => { if (!loading && activeType) e.currentTarget.style.transform = "translateY(-2px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = "none"; }}
+                >
+                  {loading && asyncJob ? (
+                    <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /><span>Job running…</span></>
+                  ) : (
+                    <><Database size={15} /><span>Extract Async (Large datasets)</span><ArrowUpRight size={14} className="opacity-70" /></>
+                  )}
+                </button>
+
+                {/* Async job progress bar */}
+                {asyncJob && (asyncJob.status === "queued" || asyncJob.status === "pending") && (
+                  <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">
+                        {asyncJob.status === "queued" ? "⏳ Queued — waiting for slot…" : "🔄 Extracting in background…"}
+                      </span>
+                      <span className="text-xs font-bold text-emerald-800">
+                        {asyncJob.progress?.percent ?? 0}%
+                      </span>
+                    </div>
+                    <div className="w-full h-2.5 bg-emerald-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${asyncJob.progress?.percent ?? 0}%`,
+                          background: "linear-gradient(90deg, #059669, #10b981)",
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-emerald-600 mt-1.5">
+                      {asyncJob.progress?.fetched > 0
+                        ? `Fetched: ${asyncJob.progress.fetched.toLocaleString()} records — polling every 15 s`
+                        : "Polling every 15 s — you can leave this tab open"}
+                    </p>
+                    <p className="text-[10px] text-emerald-500 mt-0.5">
+                      Job ID: {asyncJob.jobId} · Excel will download automatically when ready.
+                    </p>
+                  </div>
+                )}
+
+                {/* Re-open result button (sync) */}
                 {result && !showModal && (
                   <button
                     onClick={() => setShowModal(true)}
