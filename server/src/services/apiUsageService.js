@@ -63,7 +63,7 @@ export const getApiUsage = async (userId) => {
     // New day → count is effectively 0
     const isNewDay = settings.lastApiDate !== today;
     const used     = isNewDay ? 0 : (settings.dailyApiCount || 0);
-    const limit    = settings.dailyApiLimit || 500;
+    const limit    = settings.dailyApiLimit || 5000;
     const remaining = Math.max(0, limit - used);
     const percent   = Math.min(100, Math.round((used / limit) * 100));
 
