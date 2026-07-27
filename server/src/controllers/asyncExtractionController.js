@@ -44,11 +44,14 @@ export const startAsyncExtraction = async (req, res, next) => {
     // ── One-active-job-per-user+dataType guard (requirement 7) ──
     // Prevents the same user from hammering MYOB with duplicate
     // overlapping fetches for the same dataset.
+    // Consider a job stale if it has been pending for more than 2 hours
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
     const duplicate = await ExtractionJob.findOne({
       userId,
       dataType,
       subType: subType || null,
       status: { $in: ["queued", "pending"] },
+      updatedAt: { $gt: twoHoursAgo }, // ignore stale jobs
     });
     if (duplicate) {
       return res.status(409).json({
@@ -60,14 +63,14 @@ export const startAsyncExtraction = async (req, res, next) => {
     // ── Create job document ───────────────────────────────────
     const job = await ExtractionJob.create({
       userId,
-      businessId:   dbUser.businessId,
+      businessId: dbUser.businessId,
       dataType,
-      subType:      subType || null,
+      subType: subType || null,
       outputFormat,
-      startDate:    isReference ? null : startDate,
-      endDate:      isReference ? null : endDate,
-      status:       "queued",
-      progress:     { fetched: 0, total: 0, percent: 0 },
+      startDate: isReference ? null : startDate,
+      endDate: isReference ? null : endDate,
+      status: "queued",
+      progress: { fetched: 0, total: 0, percent: 0 },
     });
 
     const jobId = job._id.toString();
@@ -96,7 +99,7 @@ export const startAsyncExtraction = async (req, res, next) => {
 export const getJobStatus = async (req, res, next) => {
   try {
     const { jobId } = req.params;
-    const userId    = req.session.userId;
+    const userId = req.session.userId;
 
     const job = await ExtractionJob.findById(jobId).lean();
 
@@ -110,18 +113,18 @@ export const getJobStatus = async (req, res, next) => {
     }
 
     return res.json({
-      jobId:          job._id.toString(),
-      status:         job.status,
-      progress:       job.progress,
-      errorMessage:   job.errorMessage ?? null,
+      jobId: job._id.toString(),
+      status: job.status,
+      progress: job.progress,
+      errorMessage: job.errorMessage ?? null,
       resultCacheKey: job.status === "successful" ? job.resultCacheKey : null,
-      dataType:       job.dataType,
-      subType:        job.subType,
-      outputFormat:   job.outputFormat,
-      startDate:      job.startDate,
-      endDate:        job.endDate,
-      createdAt:      job.createdAt,
-      updatedAt:      job.updatedAt,
+      dataType: job.dataType,
+      subType: job.subType,
+      outputFormat: job.outputFormat,
+      startDate: job.startDate,
+      endDate: job.endDate,
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
     });
   } catch (err) {
     next(err);
@@ -139,11 +142,11 @@ export const listJobs = async (req, res, next) => {
 
     return res.json(
       jobs.map((j) => ({
-        jobId:     j._id.toString(),
-        dataType:  j.dataType,
-        subType:   j.subType,
-        status:    j.status,
-        progress:  j.progress,
+        jobId: j._id.toString(),
+        dataType: j.dataType,
+        subType: j.subType,
+        status: j.status,
+        progress: j.progress,
         createdAt: j.createdAt,
         updatedAt: j.updatedAt,
       }))
