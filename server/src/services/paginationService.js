@@ -5,18 +5,18 @@ import env from "../config/env.js";
 const DEFAULT_PAGE_SIZE = 1000;
 
 const ENDPOINT_PAGE_SIZE = {
-    "/Purchase/Bill/Item": 200,
-    "/Purchase/Bill/Service": 200,
-    "/Purchase/Bill/Professional": 200,
-    "/Purchase/Bill/Miscellaneous": 200,
+    "/Purchase/Bill/Item": 500,
+    "/Purchase/Bill/Service": 500,
+    "/Purchase/Bill/Professional": 500,
+    "/Purchase/Bill/Miscellaneous": 500,
 
-    "/Sale/Invoice/Item": 300,
-    "/Sale/Invoice/Service": 300,
-    "/Sale/Invoice/Professional": 300,
-    "/Sale/Invoice/Miscellaneous": 300,
+    "/Sale/Invoice/Item": 500,
+    "/Sale/Invoice/Service": 500,
+    "/Sale/Invoice/Professional": 500,
+    "/Sale/Invoice/Miscellaneous": 500,
 
-    "/Purchase/Order": 300,
-    "/Sale/Order": 300,
+    "/Purchase/Order": 500,
+    "/Sale/Order": 500,
 };
 const DEFAULT_POOL_SIZE = env.MYOB_REQUEST_POOL_SIZE;
 

@@ -196,7 +196,9 @@ export async function runExtractionJob(job, dbUser) {
         });
         totalChunks += chunkCount;
 
-        await updateProgress(jobId, totalFetched, estimatedTotal || null);
+        // Always update progress, even if total is unknown
+        await updateProgress(jobId, totalFetched, estimatedTotal > 0 ? estimatedTotal : null);
+        console.log(`📊 Job ${jobId}: batch saved — ${totalFetched} fetched so far`);
       },
     });
 
