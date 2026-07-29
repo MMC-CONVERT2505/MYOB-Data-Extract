@@ -133,7 +133,7 @@ export async function fetchAllPages(dbUser, userId, baseEndpoint, options = {}) 
                 : "";
             console.log(`Fetched: ${fetchedCount}${totalLabel} (${label})`);
 
-            if (pageItems.length < pageSize) {
+            if (pageItems.length < pageSize - 10) {
                 reachedEnd = true;
             }
         }
