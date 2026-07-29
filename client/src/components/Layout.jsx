@@ -57,44 +57,44 @@ function UsageBar({ usage }) {
     : warning                ? "#d97706"
     : "#059669";
 
-  return (
-    <div className="px-3 mt-5">
-      <div className="rounded-xl border p-3 transition-all"
-        style={{ background: bgColor, borderColor: barColor + "33" }}>
+  // return (
+  //   <div className="px-3 mt-5">
+  //     <div className="rounded-xl border p-3 transition-all"
+  //       style={{ background: bgColor, borderColor: barColor + "33" }}>
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1.5">
-            <Activity size={11} style={{ color: barColor }} />
-            <span className="text-xs font-semibold" style={{ color: textColor }}>
-              API Call's Today
-            </span>
-          </div>
-          <span className="text-xs font-bold" style={{ color: textColor }}>
-            {used}/{limit}
-          </span>
-        </div>
+  //       {/* Header */}
+  //       <div className="flex items-center justify-between mb-2">
+  //         <div className="flex items-center gap-1.5">
+  //           <Activity size={11} style={{ color: barColor }} />
+  //           <span className="text-xs font-semibold" style={{ color: textColor }}>
+  //             API Call's Today
+  //           </span>
+  //         </div>
+  //         <span className="text-xs font-bold" style={{ color: textColor }}>
+  //           {used}/{limit}
+  //         </span>
+  //       </div>
 
-        {/* Progress bar */}
-        <div className="w-full h-1.5 rounded-full bg-white/60 overflow-hidden mb-2">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{
-              width:      `${percent}%`,
-              background: `linear-gradient(90deg, ${barColor}aa, ${barColor})`,
-            }}
-          />
-        </div>
+  //       {/* Progress bar */}
+  //       <div className="w-full h-1.5 rounded-full bg-white/60 overflow-hidden mb-2">
+  //         <div
+  //           className="h-full rounded-full transition-all duration-500"
+  //           style={{
+  //             width:      `${percent}%`,
+  //             background: `linear-gradient(90deg, ${barColor}aa, ${barColor})`,
+  //           }}
+  //         />
+  //       </div>
 
-        {/* Remaining text */}
-        <p className="text-xs" style={{ color: textColor }}>
-          {critical
-            ? "❌ Daily limit reached"
-            : `${remaining} requests remaining`}
-        </p>
-      </div>
-    </div>
-  );
+  //       {/* Remaining text */}
+  //       <p className="text-xs" style={{ color: textColor }}>
+  //         {critical
+  //           ? "❌ Daily limit reached"
+  //           : `${remaining} requests remaining`}
+  //       </p>
+  //     </div>
+  //   </div>
+  // );
 }
 
 // ── Main Layout ───────────────────────────────────────────────
