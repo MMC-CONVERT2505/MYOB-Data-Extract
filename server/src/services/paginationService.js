@@ -106,9 +106,9 @@ export async function fetchAllPages(dbUser, userId, baseEndpoint, options = {}) 
                 break;
             }
 
-            // pageResult is now { items, count } — extract both.
-            const pageItems = Array.isArray(pageResult) ? pageResult : pageResult.items;
-            const pageCount = Array.isArray(pageResult) ? 0 : (pageResult.count ?? 0);
+            // fetchOnePage returns { items, count } — always extract items
+            const pageItems = pageResult?.items ?? (Array.isArray(pageResult) ? pageResult : []);
+            const pageCount = pageResult?.count ?? 0;
 
             if (pageItems === null || pageItems.length === 0) {
                 reachedEnd = true;

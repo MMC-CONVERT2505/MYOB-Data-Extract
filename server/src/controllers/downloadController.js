@@ -18,7 +18,7 @@ export const downloadExcel = async (req, res, next) => {
     const cacheStart = startDate || "reference";
     const cacheEnd   = endDate   || "reference";
 
-    // ── Fetch cached data from chunked cache ─────────────────
+  console.log(`🔍 Cache lookup: userId=${userId} businessId=${req.dbUser.businessId} dataType=${dataType} subType=${subType} start=${cacheStart} end=${cacheEnd}`);
     const rawItems = await getCachedExtraction(
       userId,
       req.dbUser.businessId,
@@ -27,7 +27,7 @@ export const downloadExcel = async (req, res, next) => {
       cacheStart,
       cacheEnd
     );
-
+    console.log(`🔍 Cache result: ${rawItems?.length ?? 0} items`);
     if (!rawItems?.length) {
       return res.status(404).json({
         error: "Cache expired or not found. Please extract the data again.",

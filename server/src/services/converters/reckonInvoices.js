@@ -85,7 +85,7 @@ export const flattenMYOBCreditNote = (creditNotes) => {
     const lines = cn.Lines?.length ? cn.Lines : [{}];
     for (const line of lines) {
       rows.push({
-        "UID":                cn.UID || "",
+        "UID":                line.Sale?.UID || "",
         "CreditFromInvoice":  cn.CreditFromInvoice?.Number || "",
         "Customer":           cleanNone(cn.Customer?.Name || cn.Customer?.CompanyName || cn.Customer?.DisplayID),
         "Number":             cn.Number || "",
