@@ -23,12 +23,12 @@ export const downloadExcel = async (req, res, next) => {
       // any mismatch there (e.g. "reference" vs an actual date, or
       // subType casing) causes a false cache-miss 404 even though the
       // data is sitting right there in the cache.
-      const job = await ExtractionJob.findOne({ jobId });
+     const job = await ExtractionJob.findById(jobId);
 
       if (!job) {
         return res.status(404).json({ error: "Extraction job not found." });
       }
-      if (job.status !== "completed") {
+      if (job.status !== "successful") {
         return res.status(409).json({ error: `Job is not completed yet (status: ${job.status}).` });
       }
 
