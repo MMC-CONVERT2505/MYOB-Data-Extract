@@ -227,7 +227,7 @@ function DownloadGroup({ label, count, items, filename, color = "#6366f1", async
       const axios = (await import("axios")).default;
 
       if (format === "excel") {
-        const res = await axios.post("/myob-api/api/download/excel", {
+        const res = await axios.post("/api/download/excel", {
           jobId:        ck.jobId,
           dataType:     ck.dataType,
           subType:      ck.subType,
