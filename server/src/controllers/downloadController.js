@@ -15,6 +15,7 @@ export const downloadExcel = async (req, res, next) => {
     }
 
   let rawItems;
+  let cacheStart, cacheEnd; // used later for the output filename — must be set on both branches
 
     if (jobId) {
       // ✅ Preferred path (used after async extraction): read the EXACT
@@ -32,8 +33,10 @@ export const downloadExcel = async (req, res, next) => {
         return res.status(409).json({ error: `Job is not completed yet (status: ${job.status}).` });
       }
 
-      const jobStart = job.startDate || "reference";
+     const jobStart = job.startDate || "reference";
       const jobEnd   = job.endDate   || "reference";
+      cacheStart = jobStart; // reuse for filename below
+      cacheEnd   = jobEnd;
 
       console.log(`🔍 Cache lookup (via jobId=${jobId}): dataType=${job.dataType} subType=${job.subType} start=${jobStart} end=${jobEnd}`);
 
@@ -47,8 +50,8 @@ export const downloadExcel = async (req, res, next) => {
       );
     } else {
       // Legacy path — sync extraction, frontend supplies params directly.
-      const cacheStart = startDate || "reference";
-      const cacheEnd   = endDate   || "reference";
+      cacheStart = startDate || "reference";
+      cacheEnd   = endDate   || "reference";
 
       console.log(`🔍 Cache lookup: userId=${userId} businessId=${req.dbUser.businessId} dataType=${dataType} subType=${subType} start=${cacheStart} end=${cacheEnd}`);
 
