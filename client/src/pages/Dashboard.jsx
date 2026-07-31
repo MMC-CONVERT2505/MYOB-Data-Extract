@@ -228,6 +228,7 @@ function DownloadGroup({ label, count, items, filename, color = "#6366f1", async
 
       if (format === "excel") {
         const res = await axios.post("/myob-api/api/download/excel", {
+          jobId:        ck.jobId,
           dataType:     ck.dataType,
           subType:      ck.subType,
           outputFormat: asyncOutputFormat || "raw",
@@ -243,6 +244,7 @@ function DownloadGroup({ label, count, items, filename, color = "#6366f1", async
 
       // For CSV/JSON: fetch from server then convert client-side
       const res = await axios.post("/myob-api/api/download/excel", {
+        jobId:        ck.jobId,
         dataType:     ck.dataType,
         subType:      ck.subType,
         outputFormat: asyncOutputFormat || "raw",
@@ -461,7 +463,7 @@ export default function Dashboard() {
         if (job.status === "successful") {
           clearPoll();
           setLoading(false);
-          const ck = job.resultCacheKey;
+          const ck = job.resultCacheKey ? { ...job.resultCacheKey, jobId } : null;
           if (ck) {
             // Show the same result modal as sync — with async cache key
             // stored so download buttons can call the server endpoint.

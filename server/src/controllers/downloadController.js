@@ -2,6 +2,7 @@ import { getCachedExtraction } from "../services/extractionCacheService.js";
 import ExtractionHistory from "../models/ExtractionHistory.model.js";
 import { convertToQBO, convertToMYOBRaw, convertToXero } from "../services/conversionService.js";
 import { streamWorkbookToResponse } from "../services/excelStreamService.js";
+import ExtractionJob from "../models/ExtractionJob.model.js";
 
 // ── POST /api/download/excel ──────────────────────────────────
 export const downloadExcel = async (req, res, next) => {
@@ -13,27 +14,60 @@ export const downloadExcel = async (req, res, next) => {
       return res.status(400).json({ error: "dataType is required" });
     }
 
-    // startDate/endDate may be "reference" (for reference data types like
-    // items/customers) or actual dates. Both are valid cache keys.
-    const cacheStart = startDate || "reference";
-    const cacheEnd   = endDate   || "reference";
+  let rawItems;
 
-  console.log(`🔍 Cache lookup: userId=${userId} businessId=${req.dbUser.businessId} dataType=${dataType} subType=${subType} start=${cacheStart} end=${cacheEnd}`);
-    const rawItems = await getCachedExtraction(
-      userId,
-      req.dbUser.businessId,
-      dataType,
-      subType || null,
-      cacheStart,
-      cacheEnd
-    );
+    if (jobId) {
+      // ✅ Preferred path (used after async extraction): read the EXACT
+      // cache params the worker itself used when it saved the data,
+      // instead of the frontend re-guessing dataType/subType/dates —
+      // any mismatch there (e.g. "reference" vs an actual date, or
+      // subType casing) causes a false cache-miss 404 even though the
+      // data is sitting right there in the cache.
+      const job = await ExtractionJob.findOne({ jobId });
+
+      if (!job) {
+        return res.status(404).json({ error: "Extraction job not found." });
+      }
+      if (job.status !== "completed") {
+        return res.status(409).json({ error: `Job is not completed yet (status: ${job.status}).` });
+      }
+
+      const jobStart = job.startDate || "reference";
+      const jobEnd   = job.endDate   || "reference";
+
+      console.log(`🔍 Cache lookup (via jobId=${jobId}): dataType=${job.dataType} subType=${job.subType} start=${jobStart} end=${jobEnd}`);
+
+      rawItems = await getCachedExtraction(
+        userId,
+        req.dbUser.businessId,
+        job.dataType,
+        job.subType || null,
+        jobStart,
+        jobEnd
+      );
+    } else {
+      // Legacy path — sync extraction, frontend supplies params directly.
+      const cacheStart = startDate || "reference";
+      const cacheEnd   = endDate   || "reference";
+
+      console.log(`🔍 Cache lookup: userId=${userId} businessId=${req.dbUser.businessId} dataType=${dataType} subType=${subType} start=${cacheStart} end=${cacheEnd}`);
+
+      rawItems = await getCachedExtraction(
+        userId,
+        req.dbUser.businessId,
+        dataType,
+        subType || null,
+        cacheStart,
+        cacheEnd
+      );
+    }
+
     console.log(`🔍 Cache result: ${rawItems?.length ?? 0} items`);
     if (!rawItems?.length) {
       return res.status(404).json({
         error: "Cache expired or not found. Please extract the data again.",
       });
     }
-
     const businessName = req.dbUser.businessName || "";
 
     // ── Convert based on outputFormat ─────────────────────────
