@@ -108,13 +108,16 @@ async function updateProgress(jobId, fetched, total) {
   });
 }
 
-async function persistBatch(rawBatch, { extractionId, chunkOffset, expiresAt }) {
+async function persistBatch(rawBatch, { extractionId, chunkOffset, expiresAt, cacheKey }) {
   const docs = [];
   for (let i = 0; i < rawBatch.length; i += CHUNK_SIZE) {
     const slice = rawBatch.slice(i, i + CHUNK_SIZE);
     docs.push({
       extractionId,
+      ...cacheKey, // ✅ userId, businessId, dataType, subType, startDate, endDate
       chunkNumber: chunkOffset + Math.floor(i / CHUNK_SIZE),
+      totalChunks: 0,
+      totalItems:  rawBatch.length,
       items:       slice,
       expiresAt,
     });
@@ -189,10 +192,18 @@ export async function runExtractionJob(job, dbUser) {
 
         totalFetched += filtered.length;
 
-        const chunkCount = await persistBatch(filtered, {
+       const chunkCount = await persistBatch(filtered, {
           extractionId,
           chunkOffset: totalChunks,
           expiresAt,
+          cacheKey: {
+            userId,
+            businessId,
+            dataType,
+            subType: subType || null,
+            startDate: cacheStart,
+            endDate:   cacheEnd,
+          },
         });
         totalChunks += chunkCount;
 
