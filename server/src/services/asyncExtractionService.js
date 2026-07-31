@@ -185,7 +185,6 @@ export async function runExtractionJob(job, dbUser) {
       endDate:   cacheEnd,
     });
 
-    let totalFetched   = 0;
 
     let totalFetched   = 0;
     let totalChunks    = 0;
