@@ -171,6 +171,22 @@ export async function runExtractionJob(job, dbUser) {
     const extractionId = historyDoc._id;
     const expiresAt    = historyDoc.cacheExpiresAt;
 
+    // ✅ Clear any stale cache chunks for this exact same key (same
+    // user+business+dataType+subType+dates) BEFORE inserting new ones —
+    // otherwise the unique index (userId+businessId+dataType+subType+
+    // startDate+endDate+chunkNumber) collides with leftover docs from a
+    // previous extraction of the same params, causing E11000 errors.
+    await ExtractionCache.deleteMany({
+      userId,
+      businessId,
+      dataType,
+      subType: subType || null,
+      startDate: cacheStart,
+      endDate:   cacheEnd,
+    });
+
+    let totalFetched   = 0;
+
     let totalFetched   = 0;
     let totalChunks    = 0;
     let estimatedTotal = 0;
