@@ -1,6 +1,6 @@
 import { getCachedExtraction } from "../services/extractionCacheService.js";
 import ExtractionHistory from "../models/ExtractionHistory.model.js";
-import { convertToQBO, convertToMYOBRaw, convertToXero } from "../services/conversionService.js";
+import { convertToQBO, convertToMYOBRaw, convertToMYOBRawData, convertToXero, convertToReckon } from "../services/conversionService.js";
 import { streamWorkbookToResponse } from "../services/excelStreamService.js";
 import ExtractionJob from "../models/ExtractionJob.model.js";
 
@@ -79,6 +79,10 @@ export const downloadExcel = async (req, res, next) => {
       rows = convertToQBO(rawItems, dataType, subType || null, businessName);
     } else if (outputFormat === "xero") {
       rows = convertToXero(rawItems, dataType, subType || null, businessName);
+    } else if (outputFormat === "reckon") {
+      rows = convertToReckon(rawItems, dataType, subType || null, businessName);
+    } else if (outputFormat === "myobrawdata") {
+      rows = convertToMYOBRawData(rawItems);
     } else {
       rows = convertToMYOBRaw(rawItems, dataType, subType || null, businessName);
     }

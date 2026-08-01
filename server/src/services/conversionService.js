@@ -104,6 +104,8 @@ import {
   flattenMYOBTaxCodes,
 } from "./converters/referenceRaw.js";
 
+import { flattenMYOBRawData } from "./converters/myobRawData.js";
+
 import {
   flattenQBOItems,
   flattenQBOCustomers,
@@ -249,6 +251,14 @@ export const convertToXero = (items, dataType, subType = null, businessName = ""
   }
 };
 
+
+// ── MYOB Raw DATA Converter ─────────────────────────────────────
+// True raw flatten: every field from the MYOB API response, no
+// dataType/subType-specific field selection, nothing dropped.
+export const convertToMYOBRawData = (items) => {
+  if (!items?.length) return [];
+  return flattenMYOBRawData(items);
+};
 
 // ── MYOB Raw Converter ────────────────────────────────────────────────────────
 export const convertToMYOBRaw = (items, dataType, subType = null, businessName = "") => {

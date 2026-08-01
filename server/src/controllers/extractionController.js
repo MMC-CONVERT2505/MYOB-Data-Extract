@@ -1,6 +1,6 @@
 
 // import { myobRequest } from "../services/myobService.js";
-// import { convertToQBO, convertToMYOBRaw, convertToXero, convertToReckon } from "../services/conversionService.js";
+// import { convertToQBO, convertToMYOBRaw, convertToMYOBRawData, convertToXero, convertToReckon } from "../services/conversionService.js";
 // import { getCachedExtraction, saveExtractionWithCache, estimatePayloadSize } from "../services/extractionCacheService.js";
 
 // const getAuth = (req) => ({
@@ -944,7 +944,7 @@
 
 
 import { myobRequest } from "../services/myobService.js";
-import { convertToQBO, convertToMYOBRaw, convertToXero, convertToReckon } from "../services/conversionService.js";
+import { convertToQBO, convertToMYOBRaw, convertToMYOBRawData, convertToXero, convertToReckon } from "../services/conversionService.js";
 import { getCachedExtraction, saveExtractionWithCache, estimatePayloadSize } from "../services/extractionCacheService.js";
 import { fetchAllPages } from "../services/paginationService.js";
 
@@ -1547,7 +1547,14 @@ case "creditNotes": {
     if (outputFormat === "xero") converted = convertToXero(items, dataType, subType || null, businessName);
     if (outputFormat === "reckon") converted = convertToReckon(items, dataType, subType || null, businessName);
 
-    const responseItems = outputFormat === "raw" ? myobFlat : (converted || myobFlat);
+    // "myobrawdata" → true raw flatten, every API field kept, no
+    // dataType/subType-specific mapping (see converters/myobRawData.js)
+    const rawDataFlat = outputFormat === "myobrawdata" ? convertToMYOBRawData(items) : null;
+
+    const responseItems =
+      outputFormat === "myobrawdata" ? rawDataFlat :
+      outputFormat === "raw" ? myobFlat :
+      (converted || myobFlat);
 
     res.json({
       success: true,
