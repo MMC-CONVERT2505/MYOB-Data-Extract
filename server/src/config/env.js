@@ -47,6 +47,18 @@ const env = {
   MYOB_API_BASE:  "https://api.myob.com/accountright",
 
   MYOB_SCOPES: API_KEY_TYPE === "new" ? NEW_SCOPES : OLD_SCOPES,
+
+  // Per-request timeout for MYOB API calls (ms). Some endpoints (nested
+  // joins like /Purchase/Bill/Item) are slow, and under concurrency MYOB
+  // can queue requests against the same company file, so this is
+  // deliberately generous by default. Override with MYOB_REQUEST_TIMEOUT_MS.
+  MYOB_REQUEST_TIMEOUT_MS: Number(process.env.MYOB_REQUEST_TIMEOUT_MS) || 60000,
+
+  // Default concurrency for the pagination request pool. Lower this
+  // (e.g. to 2 or 1) if your company file/endpoint can't handle several
+  // simultaneous requests — paginationService.js also self-heals by
+  // stepping concurrency down automatically when a batch fails.
+  MYOB_REQUEST_POOL_SIZE: Number(process.env.MYOB_REQUEST_POOL_SIZE) || 5,
 };
 
 const required = ["MYOB_CLIENT_ID", "MYOB_CLIENT_SECRET"];

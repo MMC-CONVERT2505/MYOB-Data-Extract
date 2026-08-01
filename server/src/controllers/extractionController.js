@@ -1,6 +1,7 @@
 import { myobRequest } from "../services/myobService.js";
 import { convertToQBO, convertToMYOBRaw, convertToXero, convertToReckon } from "../services/conversionService.js";
 import { getCachedExtraction, saveExtractionWithCache, estimatePayloadSize } from "../services/extractionCacheService.js";
+import { fetchAllPages } from "../services/paginationService.js";
 
 const getAuth = (req) => ({
   dbUser: req.dbUser,
@@ -82,19 +83,7 @@ export const extractData = async (req, res, next) => {
         case "invoices": {
           try {
             const baseEp = subType ? `/Sale/Invoice/${subType}` : `/Sale/Invoice`;
-            let allItems = [];
-            let pageUrl = `${baseEp}?$top=1000&$orderby=Date desc`;
-            while (pageUrl) {
-              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-              const pageItems = data?.Items || [];
-              allItems = allItems.concat(pageItems);
-              if (data?.NextPageLink && pageItems.length > 0) {
-                const u = new URL(data.NextPageLink);
-                const parts = u.pathname.split("/");
-                const bizIdx = parts.indexOf(dbUser.businessId);
-                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-              } else { pageUrl = null; }
-            }
+            let allItems = await fetchAllPages(dbUser, userId, `${baseEp}?$top=1000&$orderby=Date desc`);
             let filtered = allItems.filter(i => {
               if (!i.Date) return true;
               const d = i.Date.substring(0, 10);
@@ -102,19 +91,7 @@ export const extractData = async (req, res, next) => {
             });
             if (filtered.length === 0 && subType && allItems.length === 0) {
               console.warn(`⚠️ /Sale/Invoice/${subType} returned 0 — falling back to /Sale/Invoice`);
-              let fallbackAll = [];
-              let fbPage = `/Sale/Invoice?$top=1000&$orderby=Date desc`;
-              while (fbPage) {
-                const data = await myobRequest(dbUser, userId, "GET", fbPage);
-                const pageItems = data?.Items || [];
-                fallbackAll = fallbackAll.concat(pageItems);
-                if (data?.NextPageLink && pageItems.length > 0) {
-                  const u = new URL(data.NextPageLink);
-                  const parts = u.pathname.split("/");
-                  const bizIdx = parts.indexOf(dbUser.businessId);
-                  fbPage = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-                } else { fbPage = null; }
-              }
+              const fallbackAll = await fetchAllPages(dbUser, userId, `/Sale/Invoice?$top=1000&$orderby=Date desc`);
               filtered = fallbackAll.filter(i => {
                 if (!i.Date) return false;
                 const d = i.Date.substring(0, 10);
@@ -149,19 +126,7 @@ export const extractData = async (req, res, next) => {
         case "salesOrders": {
           try {
             const baseEp = subType ? `/Sale/Order/${subType}` : `/Sale/Order`;
-            let allItems = [];
-            let pageUrl = `${baseEp}?$top=1000&$orderby=Date desc`;
-            while (pageUrl) {
-              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-              const pageItems = data?.Items || [];
-              allItems = allItems.concat(pageItems);
-              if (data?.NextPageLink && pageItems.length > 0) {
-                const u = new URL(data.NextPageLink);
-                const parts = u.pathname.split("/");
-                const bizIdx = parts.indexOf(dbUser.businessId);
-                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-              } else { pageUrl = null; }
-            }
+            let allItems = await fetchAllPages(dbUser, userId, `${baseEp}?$top=1000&$orderby=Date desc`);
             items = allItems.filter(i => {
               if (!i.Date) return true;
               const d = i.Date.substring(0, 10);
@@ -189,19 +154,7 @@ export const extractData = async (req, res, next) => {
         case "bills": {
           try {
             const baseEp = subType ? `/Purchase/Bill/${subType}` : `/Purchase/Bill`;
-            let allItems = [];
-            let pageUrl = `${baseEp}?$top=1000&$orderby=Date desc`;
-            while (pageUrl) {
-              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-              const pageItems = data?.Items || [];
-              allItems = allItems.concat(pageItems);
-              if (data?.NextPageLink && pageItems.length > 0) {
-                const u = new URL(data.NextPageLink);
-                const parts = u.pathname.split("/");
-                const bizIdx = parts.indexOf(dbUser.businessId);
-                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-              } else { pageUrl = null; }
-            }
+            let allItems = await fetchAllPages(dbUser, userId, `${baseEp}?$top=1000&$orderby=Date desc`);
             items = allItems.filter(i => {
               if (!i.Date) return true;
               const d = i.Date.substring(0, 10);
@@ -230,19 +183,7 @@ export const extractData = async (req, res, next) => {
         case "purchaseOrders": {
           try {
             const baseEp = subType ? `/Purchase/Order/${subType}` : `/Purchase/Order`;
-            let allItems = [];
-            let pageUrl = `${baseEp}?$top=1000&$orderby=Date desc`;
-            while (pageUrl) {
-              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-              const pageItems = data?.Items || [];
-              allItems = allItems.concat(pageItems);
-              if (data?.NextPageLink && pageItems.length > 0) {
-                const u = new URL(data.NextPageLink);
-                const parts = u.pathname.split("/");
-                const bizIdx = parts.indexOf(dbUser.businessId);
-                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-              } else { pageUrl = null; }
-            }
+            let allItems = await fetchAllPages(dbUser, userId, `${baseEp}?$top=1000&$orderby=Date desc`);
             items = allItems.filter(i => {
               if (!i.Date) return true;
               const d = i.Date.substring(0, 10);
@@ -277,19 +218,7 @@ case "creditNotes": {
   let cnFetched = false;
   for (const ep of cnEndpoints) {
     try {
-      let allItems = [];
-      let pageUrl = ep;
-      while (pageUrl) {
-        const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-        const pageItems = data?.Items || [];
-        allItems = allItems.concat(pageItems);
-        if (data?.NextPageLink && pageItems.length > 0) {
-          const u = new URL(data.NextPageLink);
-          const parts = u.pathname.split("/");
-          const bizIdx = parts.indexOf(dbUser.businessId);
-          pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-        } else { pageUrl = null; }
-      }
+      const allItems = await fetchAllPages(dbUser, userId, ep);
       items = ep.includes("filter")
         ? allItems
         : allItems.filter(i => {
@@ -322,19 +251,7 @@ case "creditNotes": {
           let crFetched = false;
           for (const ep of crEndpoints) {
             try {
-              let allItems = [];
-              let pageUrl = ep;
-              while (pageUrl) {
-                const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-                const pageItems = data?.Items || [];
-                allItems = allItems.concat(pageItems);
-                if (data?.NextPageLink && pageItems.length > 0) {
-                  const u = new URL(data.NextPageLink);
-                  const parts = u.pathname.split("/");
-                  const bizIdx = parts.indexOf(dbUser.businessId);
-                  pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-                } else { pageUrl = null; }
-              }
+              const allItems = await fetchAllPages(dbUser, userId, ep);
               items = ep.includes("filter")
                 ? allItems
                 : allItems.filter(i => {
@@ -401,19 +318,7 @@ case "creditNotes": {
           let drFetched = false;
           for (const ep of drEndpoints) {
             try {
-              let allItems = [];
-              let pageUrl = ep;
-              while (pageUrl) {
-                const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-                const pageItems = data?.Items || [];
-                allItems = allItems.concat(pageItems);
-                if (data?.NextPageLink && pageItems.length > 0) {
-                  const u = new URL(data.NextPageLink);
-                  const parts = u.pathname.split("/");
-                  const bizIdx = parts.indexOf(dbUser.businessId);
-                  pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-                } else { pageUrl = null; }
-              }
+              const allItems = await fetchAllPages(dbUser, userId, ep);
               items = ep.includes("filter")
                 ? allItems
                 : allItems.filter(i => {
@@ -441,20 +346,7 @@ case "creditNotes": {
           let invPayFetched = false;
           for (const baseEp of ["/Sale/CustomerPayment", "/Sale/Payment"]) {
             try {
-              let allItems = [];
-              let pageUrl = `${baseEp}?$top=1000&$orderby=Date desc`;
-              while (pageUrl) {
-                const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-                const pageItems = data?.Items || [];
-                allItems = allItems.concat(pageItems);
-                console.log(`📄 ${baseEp} page: ${pageItems.length} (total: ${allItems.length})`);
-                if (data?.NextPageLink && pageItems.length > 0) {
-                  const u = new URL(data.NextPageLink);
-                  const parts = u.pathname.split("/");
-                  const bizIdx = parts.indexOf(dbUser.businessId);
-                  pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-                } else { pageUrl = null; }
-              }
+              let allItems = await fetchAllPages(dbUser, userId, `${baseEp}?$top=1000&$orderby=Date desc`);
               items = allItems.filter(i => {
                 if (!i.Date) return true;
                 const d = i.Date.substring(0, 10);
@@ -477,19 +369,7 @@ case "creditNotes": {
           let billPayFetched = false;
           for (const baseEp of ["/Purchase/SupplierPayment", "/Purchase/Payment"]) {
             try {
-              let allItems = [];
-              let pageUrl = `${baseEp}?$top=1000&$orderby=Date desc`;
-              while (pageUrl) {
-                const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-                const pageItems = data?.Items || [];
-                allItems = allItems.concat(pageItems);
-                if (data?.NextPageLink && pageItems.length > 0) {
-                  const u = new URL(data.NextPageLink);
-                  const parts = u.pathname.split("/");
-                  const bizIdx = parts.indexOf(dbUser.businessId);
-                  pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-                } else { pageUrl = null; }
-              }
+              let allItems = await fetchAllPages(dbUser, userId, `${baseEp}?$top=1000&$orderby=Date desc`);
               items = allItems.filter(i => {
                 if (!i.Date) return true;
                 const d = i.Date.substring(0, 10);
@@ -524,19 +404,7 @@ case "creditNotes": {
             });
           }
           try {
-            let allItems = [];
-            let pageUrl = `${bankEp}?$top=1000&$orderby=Date desc`;
-            while (pageUrl) {
-              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-              const pageItems = data?.Items || [];
-              allItems = allItems.concat(pageItems);
-              if (data?.NextPageLink && pageItems.length > 0) {
-                const u = new URL(data.NextPageLink);
-                const parts = u.pathname.split("/");
-                const bizIdx = parts.indexOf(dbUser.businessId);
-                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-              } else { pageUrl = null; }
-            }
+            let allItems = await fetchAllPages(dbUser, userId, `${bankEp}?$top=1000&$orderby=Date desc`);
             items = allItems.filter(i => {
               const dateField = i.Date || i.DateOccurred || "";
               if (!dateField) return true;
@@ -554,19 +422,7 @@ case "creditNotes": {
         // ── General Journal ───────────────────────────────────
         case "generalJournal": {
           try {
-            let allItems = [];
-            let pageUrl = `/GeneralLedger/GeneralJournal?$top=1000&$orderby=DateOccurred desc`;
-            while (pageUrl) {
-              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-              const pageItems = data?.Items || [];
-              allItems = allItems.concat(pageItems);
-              if (data?.NextPageLink && pageItems.length > 0) {
-                const u = new URL(data.NextPageLink);
-                const parts = u.pathname.split("/");
-                const bizIdx = parts.indexOf(dbUser.businessId);
-                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-              } else { pageUrl = null; }
-            }
+            let allItems = await fetchAllPages(dbUser, userId, `/GeneralLedger/GeneralJournal?$top=1000&$orderby=DateOccurred desc`);
             items = allItems.filter(i => {
               const dateField = i.DateOccurred || i.Date || "";
               if (!dateField) return true;
@@ -585,19 +441,7 @@ case "creditNotes": {
         case "quotes": {
           try {
             const baseEp = subType ? `/Sale/Quote/${subType}` : `/Sale/Quote`;
-            let allItems = [];
-            let pageUrl = `${baseEp}?$filter=${encodeURIComponent(dateFilter)}&$top=1000&$orderby=Date desc`;
-            while (pageUrl) {
-              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-              const pageItems = data?.Items || [];
-              allItems = allItems.concat(pageItems);
-              if (data?.NextPageLink && pageItems.length > 0) {
-                const u = new URL(data.NextPageLink);
-                const parts = u.pathname.split("/");
-                const bizIdx = parts.indexOf(dbUser.businessId);
-                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-              } else { pageUrl = null; }
-            }
+            let allItems = await fetchAllPages(dbUser, userId, `${baseEp}?$filter=${encodeURIComponent(dateFilter)}&$top=1000&$orderby=Date desc`);
             let filtered = allItems.filter(i => {
               if (!i.Date) return true;
               const d = i.Date.substring(0, 10);
@@ -605,19 +449,7 @@ case "creditNotes": {
             });
             if (filtered.length === 0 && allItems.length === 0 && subType) {
               console.warn(`⚠️ Quote $filter returned 0 — trying without $filter`);
-              let allFb = [];
-              let fbPage = `${baseEp}?$top=1000&$orderby=Date desc`;
-              while (fbPage) {
-                const data = await myobRequest(dbUser, userId, "GET", fbPage);
-                const pageItems = data?.Items || [];
-                allFb = allFb.concat(pageItems);
-                if (data?.NextPageLink && pageItems.length > 0) {
-                  const u = new URL(data.NextPageLink);
-                  const parts = u.pathname.split("/");
-                  const bizIdx = parts.indexOf(dbUser.businessId);
-                  fbPage = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-                } else { fbPage = null; }
-              }
+              const allFb = await fetchAllPages(dbUser, userId, `${baseEp}?$top=1000&$orderby=Date desc`);
               filtered = allFb.filter(i => {
                 if (!i.Date) return false;
                 const d = i.Date.substring(0, 10);
@@ -633,19 +465,7 @@ case "creditNotes": {
               console.warn(`⚠️ Quote $filter gave 400 — retrying without $filter`);
               try {
                 const baseEp2 = subType ? `/Sale/Quote/${subType}` : `/Sale/Quote`;
-                let allItems2 = [];
-                let fbPage = `${baseEp2}?$top=1000&$orderby=Date desc`;
-                while (fbPage) {
-                  const data = await myobRequest(dbUser, userId, "GET", fbPage);
-                  const pageItems = data?.Items || [];
-                  allItems2 = allItems2.concat(pageItems);
-                  if (data?.NextPageLink && pageItems.length > 0) {
-                    const u = new URL(data.NextPageLink);
-                    const parts = u.pathname.split("/");
-                    const bizIdx = parts.indexOf(dbUser.businessId);
-                    fbPage = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-                  } else { fbPage = null; }
-                }
+                const allItems2 = await fetchAllPages(dbUser, userId, `${baseEp2}?$top=1000&$orderby=Date desc`);
                 items = allItems2.filter(i => {
                   if (!i.Date) return true;
                   const d = i.Date.substring(0, 10);
@@ -673,19 +493,7 @@ case "creditNotes": {
         // ── Reference Data Types ──────────────────────────────
         case "items": {
           try {
-            let allItems = [];
-            let pageUrl = `/Inventory/Item?$top=1000`;
-            while (pageUrl) {
-              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-              const pageItems = data?.Items || [];
-              allItems = allItems.concat(pageItems);
-              if (data?.NextPageLink && pageItems.length > 0) {
-                const u = new URL(data.NextPageLink);
-                const parts = u.pathname.split("/");
-                const bizIdx = parts.indexOf(dbUser.businessId);
-                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-              } else { pageUrl = null; }
-            }
+            let allItems = await fetchAllPages(dbUser, userId, `/Inventory/Item?$top=1000`);
             items = allItems;
             console.log(`✅ /Inventory/Item → ${items.length} records`);
           } catch (err) {
@@ -697,19 +505,7 @@ case "creditNotes": {
 
         case "customers": {
           try {
-            let allItems = [];
-            let pageUrl = `/Contact/Customer?$top=1000`;
-            while (pageUrl) {
-              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-              const pageItems = data?.Items || [];
-              allItems = allItems.concat(pageItems);
-              if (data?.NextPageLink && pageItems.length > 0) {
-                const u = new URL(data.NextPageLink);
-                const parts = u.pathname.split("/");
-                const bizIdx = parts.indexOf(dbUser.businessId);
-                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-              } else { pageUrl = null; }
-            }
+            let allItems = await fetchAllPages(dbUser, userId, `/Contact/Customer?$top=1000`);
             items = allItems;
             console.log(`✅ /Contact/Customer → ${items.length} records`);
           } catch (err) {
@@ -721,19 +517,7 @@ case "creditNotes": {
 
         case "suppliers": {
           try {
-            let allItems = [];
-            let pageUrl = `/Contact/Supplier?$top=1000`;
-            while (pageUrl) {
-              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-              const pageItems = data?.Items || [];
-              allItems = allItems.concat(pageItems);
-              if (data?.NextPageLink && pageItems.length > 0) {
-                const u = new URL(data.NextPageLink);
-                const parts = u.pathname.split("/");
-                const bizIdx = parts.indexOf(dbUser.businessId);
-                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-              } else { pageUrl = null; }
-            }
+            let allItems = await fetchAllPages(dbUser, userId, `/Contact/Supplier?$top=1000`);
             items = allItems;
             console.log(`✅ /Contact/Supplier → ${items.length} records`);
           } catch (err) {
@@ -745,19 +529,7 @@ case "creditNotes": {
 
         case "accounts": {
           try {
-            let allItems = [];
-            let pageUrl = `/GeneralLedger/Account?$top=1000`;
-            while (pageUrl) {
-              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-              const pageItems = data?.Items || [];
-              allItems = allItems.concat(pageItems);
-              if (data?.NextPageLink && pageItems.length > 0) {
-                const u = new URL(data.NextPageLink);
-                const parts = u.pathname.split("/");
-                const bizIdx = parts.indexOf(dbUser.businessId);
-                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-              } else { pageUrl = null; }
-            }
+            let allItems = await fetchAllPages(dbUser, userId, `/GeneralLedger/Account?$top=1000`);
             items = allItems;
             console.log(`✅ /GeneralLedger/Account → ${items.length} records`);
           } catch (err) {
@@ -769,19 +541,7 @@ case "creditNotes": {
 
         case "jobs": {
           try {
-            let allItems = [];
-            let pageUrl = `/GeneralLedger/Job?$top=1000`;
-            while (pageUrl) {
-              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-              const pageItems = data?.Items || [];
-              allItems = allItems.concat(pageItems);
-              if (data?.NextPageLink && pageItems.length > 0) {
-                const u = new URL(data.NextPageLink);
-                const parts = u.pathname.split("/");
-                const bizIdx = parts.indexOf(dbUser.businessId);
-                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-              } else { pageUrl = null; }
-            }
+            let allItems = await fetchAllPages(dbUser, userId, `/GeneralLedger/Job?$top=1000`);
             items = allItems;
             console.log(`✅ /GeneralLedger/Job → ${items.length} records`);
           } catch (err) {
@@ -793,19 +553,7 @@ case "creditNotes": {
 
         case "taxcodes": {
           try {
-            let allItems = [];
-            let pageUrl = `/GeneralLedger/TaxCode?$top=1000`;
-            while (pageUrl) {
-              const data = await myobRequest(dbUser, userId, "GET", pageUrl);
-              const pageItems = data?.Items || [];
-              allItems = allItems.concat(pageItems);
-              if (data?.NextPageLink && pageItems.length > 0) {
-                const u = new URL(data.NextPageLink);
-                const parts = u.pathname.split("/");
-                const bizIdx = parts.indexOf(dbUser.businessId);
-                pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
-              } else { pageUrl = null; }
-            }
+            let allItems = await fetchAllPages(dbUser, userId, `/GeneralLedger/TaxCode?$top=1000`);
             items = allItems;
             console.log(`✅ /GeneralLedger/TaxCode → ${items.length} records`);
           } catch (err) {

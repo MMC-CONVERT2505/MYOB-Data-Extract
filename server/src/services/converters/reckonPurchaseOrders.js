@@ -48,6 +48,8 @@ const buildLines = (doc) => {
 // ── 1. Purchase Orders — Item lines → "Purchase Order Item" sheet ─
 // Endpoint: /Purchase/Order/Item
 export const flattenReckonPurchaseOrderItem = (orders) => {
+
+  console.log(JSON.stringify(orders, null, 2))
   const rows = [];
   for (const o of orders) {
     for (const l of buildLines(o)) {

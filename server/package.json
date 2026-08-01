@@ -18,7 +18,8 @@
     "mongobd": "^0.0.1-security.0",
     "mongodb": "^7.2.0",
     "mongoose": "^9.5.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "exceljs": "^4.4.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

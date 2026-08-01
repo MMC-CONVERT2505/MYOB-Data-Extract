@@ -83,12 +83,13 @@ export const flattenReckonInvoice = (invoices) => {
 // Endpoint: /Sale/CreditSettlement — a settlement record, NOT a
 // line-itemised document, so Item/Account/Qty columns stay blank.
 export const flattenMYOBCreditNote = (creditNotes) => {
+  console.log(JSON.stringify(creditNotes, null, 2))
   const rows = [];
   for (const cn of creditNotes) {
     const lines = cn.Lines?.length ? cn.Lines : [{}];
     for (const line of lines) {
       rows.push({
-        "UID":                cn.UID || "",
+        "UID":                line.Sale?.UID || "",
         "CreditFromInvoice":  cn.CreditFromInvoice?.Number || "",
         "Customer":           cleanNone(cn.Customer?.Name || cn.Customer?.CompanyName || cn.Customer?.DisplayID),
         "Number":             cn.Number || "",

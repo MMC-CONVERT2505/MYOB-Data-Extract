@@ -140,6 +140,7 @@ import axios from "axios";
 import env from "../config/env.js";
 import { updateUserTokens } from "./userService.js";
 import { incrementApiCount } from "./apiUsageService.js";
+import { withRetry } from "./requestPool.js";
 
 // ── Exchange authorization code for tokens ───────────────────
 export const exchangeCodeForTokens = async (code) => {
@@ -266,6 +267,12 @@ export const myobRequest = async (dbUser, userId, method, endpoint, body = null)
   const config = {
     method,
     url,
+    // Configurable — default raised to 60s. Some AccountRight endpoints
+    // (nested/joined ones like /Purchase/Bill/Item) are genuinely slow,
+    // and under concurrent load MYOB can queue requests against the same
+    // company file, so 30s was tripping the retry logic on requests that
+    // just needed more time, not a real failure.
+    timeout: env.MYOB_REQUEST_TIMEOUT_MS,
     headers: {
       Authorization:       `Bearer ${accessToken}`,
       "x-myobapi-key":     env.MYOB_CLIENT_ID,
@@ -278,7 +285,13 @@ export const myobRequest = async (dbUser, userId, method, endpoint, body = null)
   if (body) config.data = body;
 
   try {
-    const { data } = await axios(config);
+    // ✅ Automatic retry with exponential backoff for transient failures:
+    // 429 (rate limit, honors Retry-After), 500/502/503/504, and network
+    // timeouts (ECONNABORTED/ETIMEDOUT/ECONNRESET). Non-retryable errors
+    // (400/401/403/404 etc.) are thrown immediately, unchanged.
+    const { data } = await withRetry(() => axios(config), {
+      label: `MYOB ${method} ${endpoint}`,
+    });
 
     // ✅ Count every successful MYOB API call
     // Fire-and-forget — don't await to keep response fast

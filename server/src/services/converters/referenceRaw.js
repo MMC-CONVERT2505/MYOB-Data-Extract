@@ -23,408 +23,438 @@ const flatAddr = (addresses) => {
 };
 
 export const flattenMYOBItems = (items) =>
+  items.map((i) => {
+    const purchaseAccount =
+      i.ExpenseAccount?.DisplayID ||
+      i.CostOfSalesAccount?.DisplayID ||
+      i.BuyingDetails?.ExpenseAccount?.DisplayID ||
+      i.BuyingDetails?.CostOfSalesAccount?.DisplayID ||
+      "";
 
-  items.map((i) => ({
+    return {
+      // ───── GENERAL ─────
+      "NAME": safe(i.Name),
+      "CODE": safe(i.Number),
 
-  // ───── GENERAL ─────
+      "TYPE":
+        i.IsInventoried
+          ? "Inventory"
+          : i.IsSold && i.IsBought
+          ? "Bought & Sold"
+          : i.IsSold
+          ? "Sold"
+          : i.IsBought
+          ? "Bought"
+          : "Service",
 
-  "NAME":
-    safe(i.Name),
+      "Status": i.IsActive ? "Active" : "Inactive",
 
-  "CODE":
-    safe(i.Number),
+      // ───── SALES ─────
+      "SALE ACCOUNT":
+        i.IncomeAccount?.DisplayID || "",
 
-  "TYPE":
-    i.IsInventoried
-      ? "Inventory"
-      : (
-          i.IsSold && i.IsBought
-            ? "Bought & Sold"
-            : (
-                i.IsSold
-                  ? "Sold"
-                  : (
-                      i.IsBought
-                        ? "Bought"
-                        : "Service"
-                    )
-              )
+      "SALE DESCRIPTION":
+        safe(
+          i.Description ||
+          i.SellingDetails?.Description
         ),
 
-  "Status":
-    i.IsActive
-      ? "Active"
-      : "Inactive",
+      "SALE PRICE":
+        safe(
+          i.SellingDetails?.BaseSellingPrice ??
+          i.BaseSellingPrice
+        ),
 
-  // ───── SALES ─────
+      "SALE TAX":
+        safe(
+          i.SellingDetails?.TaxCode?.Code
+        ),
 
-  "SALE ACCOUNT":
-    i.IncomeAccount?.DisplayID,
+      "Amounts include tax":
+        i.SellingDetails?.IsTaxInclusive
+          ? "Yes"
+          : "No",
 
-  "SALE DESCRIPTION":
-    safe(
-      i.Description ||
-      i.SellingDetails?.Description
-    ),
+      // ───── PURCHASE ─────
+      "PURCHASE ACCOUNT":
+        purchaseAccount,
 
-  "SALE PRICE":
-    safe(
-      i.SellingDetails?.BaseSellingPrice ??
-      i.BaseSellingPrice
-    ),
+      "PURCHASE DESCRIPTION":
+        safe(
+          i.BuyingDetails?.Description ||
+          i.Description
+        ),
 
-  "SALE TAX":
-    safe(
-      i.SellingDetails?.TaxCode?.Code
-    ),
+      "PURCHASE PRICE":
+        safe(
+          i.BuyingDetails?.StandardCost ??
+          i.BuyingDetails?.LastPurchasePrice ??
+          ""
+        ),
 
-  "Amounts include tax":
-    i.SellingDetails?.IsTaxInclusive
-      ? "Yes"
-      : "No",
+      "PURCHASE TAX":
+        safe(
+          i.BuyingDetails?.TaxCode?.Code
+        ),
+    };
+  });
 
-  // ───── PURCHASE ─────
 
-  "PURCHASE ACCOUNT":
-    i.ExpenseAccount?.DisplayID || i.CostOfSalesAccount?.DisplayID,
+// ── Customers (/Contact/Customer) ─────────────────────────
+export const flattenMYOBCustomers = (items) => {
 
-  "PURCHASE DESCRIPTION":
-    safe(
-      i.Description
-    ),
+  console.log(JSON.stringify(items, null, 2));
 
-  "PURCHASE PRICE":
-    safe(
-      i.BuyingDetails?.StandardCost ??
-      i.BuyingDetails?.LastPurchasePrice
-    ),
+  return items.map((c) => {
 
-  "PURCHASE TAX":
-    safe(
-      i.BuyingDetails?.TaxCode?.Code
-    ),
+    const primaryAddress =
+      c.Addresses?.find(a => a.Location === 1) ||
+      c.Addresses?.[0] ||
+      {};
 
-}));
+    const shippingAddress =
+      c.Addresses?.find(a => a.Location === 2) ||
+      c.Addresses?.[1] ||
+      {};
 
+    const postalAddress =
+      c.Addresses?.find(a => a.Location === 3) ||
+      c.Addresses?.[2] ||
+      {};
 
-// ── 2. Customers (/Contact/Customer) ─────────────────────────
-export const flattenMYOBCustomers = (items) =>
-  items.map((c) => ({
+    return {
 
-    // ───── TEMPLATE FIELDS ─────
+      // ───── TEMPLATE FIELDS ─────
 
-    "Display name":
-      cleanNone(
-        c.CompanyName ||
-        `${c.FirstName || ""} ${c.LastName || ""}`.trim()
-      ),
+      "Display name":
+        cleanNone(
+          c.CompanyName ||
+          `${c.FirstName || ""} ${c.LastName || ""}`.trim()
+        ),
 
-    "Customer name":
-      cleanNone(
-        `${c.FirstName || ""} ${c.LastName || ""}`.trim()
-      ),
+      "Customer name":
+        cleanNone(
+          `${c.FirstName || ""} ${c.LastName || ""}`.trim()
+        ),
 
-    "Is_Customer":
-      "Yes",
+      "Is_Customer": "Yes",
 
-    "Is_Supplier":
-      "No",
+      "Is_Supplier": "No",
 
-    "Status":
-      c.IsActive
-        ? "Active"
-        : "Inactive",
+      "Status":
+        c.IsActive ? "Active" : "Inactive",
 
-    // ───── BUSINESS ADDRESS ─────
+      // ───── BUSINESS ADDRESS ─────
 
-    "BUSINESS ADDRESS Line 1":
-      safe(c.Addresses?.[0]?.Street || ""),
+      "BUSINESS ADDRESS Line 1":
+        safe(primaryAddress.Street),
 
-    "BUSINESS ADDRESS line 2":
-      safe(c.Addresses?.[0]?.City || ""),
+      "BUSINESS ADDRESS line 2":
+        safe(primaryAddress.City),
 
-    "BUSINESS ADDRESS line 3":
-      safe(c.Addresses?.[0]?.Region || ""),
+      "BUSINESS ADDRESS line 3":
+        safe(primaryAddress.Region),
 
-    "BUSINESS ADDRESS Suburb":
-      safe(c.Addresses?.[0]?.City || ""),
+      "BUSINESS ADDRESS Suburb":
+        safe(primaryAddress.City),
 
-    "BUSINESS ADDRESS State":
-      safe(c.Addresses?.[0]?.State || ""),
+      "BUSINESS ADDRESS State":
+        safe(primaryAddress.State),
 
-    "BUSINESS ADDRESS Postcode":
-      safe(c.Addresses?.[0]?.PostCode || ""),
+      "BUSINESS ADDRESS Postcode":
+        safe(primaryAddress.PostCode),
 
-    "BUSINESS ADDRESS Country":
-      safe(c.Addresses?.[0]?.Country || ""),
+      "BUSINESS ADDRESS Country":
+        safe(primaryAddress.Country),
 
-    // ───── SHIPPING ADDRESS ─────
+      // ───── SHIPPING ADDRESS ─────
 
-    "SHIPPING ADDRESS Line 1":
-      safe(c.Addresses?.[1]?.Street || ""),
+      "SHIPPING ADDRESS Line 1":
+        safe(shippingAddress.Street),
 
-    "SHIPPING ADDRESS Line 2":
-      safe(c.Addresses?.[1]?.City || ""),
+      "SHIPPING ADDRESS Line 2":
+        safe(shippingAddress.City),
 
-    "SHIPPING ADDRESS Line 3":
-      safe(c.Addresses?.[1]?.Region || ""),
+      "SHIPPING ADDRESS Line 3":
+        safe(shippingAddress.Region),
 
-    "SHIPPING ADDRESS Suburb":
-      safe(c.Addresses?.[1]?.City || ""),
+      "SHIPPING ADDRESS Suburb":
+        safe(shippingAddress.City),
 
-    "SHIPPING ADDRESS State":
-      safe(c.Addresses?.[1]?.State || ""),
+      "SHIPPING ADDRESS State":
+        safe(shippingAddress.State),
 
-    "SHIPPING ADDRESS Postcode":
-      safe(c.Addresses?.[1]?.PostCode || ""),
+      "SHIPPING ADDRESS Postcode":
+        safe(shippingAddress.PostCode),
 
-    "SHIPPING ADDRESS Country":
-      safe(c.Addresses?.[1]?.Country || ""),
+      "SHIPPING ADDRESS Country":
+        safe(shippingAddress.Country),
 
-    // ───── POSTAL ADDRESS ─────
+      // ───── POSTAL ADDRESS ─────
 
-    "POSTAL ADDRESS Line 1":
-      safe(c.Addresses?.[2]?.Street || ""),
+      "POSTAL ADDRESS Line 1":
+        safe(postalAddress.Street),
 
-    "POSTAL ADDRESS Line 2":
-      safe(c.Addresses?.[2]?.City || ""),
+      "POSTAL ADDRESS Line 2":
+        safe(postalAddress.City),
 
-    "POSTAL ADDRESS Line 3":
-      safe(c.Addresses?.[2]?.Region || ""),
+      "POSTAL ADDRESS Line 3":
+        safe(postalAddress.Region),
 
-    "POSTAL ADDRESS Suburb":
-      safe(c.Addresses?.[2]?.City || ""),
+      "POSTAL ADDRESS Suburb":
+        safe(postalAddress.City),
 
-    "POSTAL ADDRESS State":
-      safe(c.Addresses?.[2]?.State || ""),
+      "POSTAL ADDRESS State":
+        safe(postalAddress.State),
 
-    "POSTAL ADDRESS Postcode":
-      safe(c.Addresses?.[2]?.PostCode || ""),
+      "POSTAL ADDRESS Postcode":
+        safe(postalAddress.PostCode),
 
-    "POSTAL ADDRESS Country":
-      safe(c.Addresses?.[2]?.Country || ""),
+      "POSTAL ADDRESS Country":
+        safe(postalAddress.Country),
 
-    // ───── OTHER DETAILS ─────
+      // ───── OTHER DETAILS ─────
 
-    "ABN":
-      safe(c.SellingDetails?.ABN),
+      "ABN":
+        safe(c.SellingDetails?.ABN),
 
-    "Branch":
-      safe(c.Branch),
+      "Branch":
+        safe(c.Branch),
 
-    "Email":
-      safe(c.Email),
+      "Email":
+        safe(primaryAddress.Email),
 
-    "Skype":
-      safe(c.SkypeID),
+      "Skype":
+        safe(c.SkypeID),
 
-    "Other email":
-      safe(c.OtherEmail),
+      "Other email":
+        safe(c.OtherEmail),
 
-    "Personal email":
-      safe(c.PersonalEmail),
+      "Personal email":
+        safe(c.PersonalEmail),
 
-    "Work email":
-      safe(c.WorkEmail),
+      "Work email":
+        safe(c.WorkEmail),
 
-    "Notes":
-      safe(c.Notes),
+      "Notes":
+        safe(c.Notes),
 
-    "Web":
-      safe(c.Website),
+      "Web":
+        safe(primaryAddress.Website),
 
-    "Mobile":
-      safe(c.Phone1?.Number),
+      "Mobile":
+        safe(primaryAddress.Phone1),
 
-    "Phone":
-      safe(c.Phone2?.Number),
+      "Phone":
+        safe(primaryAddress.Phone1),
 
-    "Fax":
-      safe(c.FaxNumber),
+      "Fax":
+        safe(primaryAddress.Fax),
 
-    "Other Phone":
-      safe(c.Phone3?.Number),
+      "Other Phone":
+        safe(primaryAddress.Phone3),
 
-    "Primary Phone":
-      safe(c.Phone1?.Number),
+      "Primary Phone":
+        safe(primaryAddress.Phone1),
 
-    "Home Phone":
-      safe(c.Phone2?.Number),
+      "Home Phone":
+        safe(primaryAddress.Phone2),
 
-    "Work Phone":
-      safe(c.Phone3?.Number),
+      "Work Phone":
+        safe(primaryAddress.Phone3),
 
-    // ───── BANK DETAILS ─────
+      // ───── BANK DETAILS ─────
 
-    "bank name":
-      safe(c.BankAccountDetails?.BankName),
+      "bank name":
+        safe(c.BankAccountDetails?.BankName),
 
-    "bank branch number":
-      safe(c.BankAccountDetails?.BranchNumber),
+      "bank branch number":
+        safe(c.BankAccountDetails?.BranchNumber),
 
-    "bank account number":
-      safe(c.BankAccountDetails?.AccountNumber),
-  }));
+      "bank account number":
+        safe(c.BankAccountDetails?.AccountNumber),
+    };
+
+  });
+
+};
 
 // ── 3. Suppliers (/Contact/Supplier) ─────────────────────────
-export const flattenMYOBSuppliers = (items) =>
-  items.map((s) => ({
+export const flattenMYOBSuppliers = (items) => {
 
-    // ───── TEMPLATE FIELDS ─────
+  console.log(JSON.stringify(items, null, 2));
 
-    "Display name":
-      cleanNone(
-        s.CompanyName ||
-        `${s.FirstName || ""} ${s.LastName || ""}`.trim()
-      ),
+  return items.map((s) => {
 
-    "Customer name":
-      cleanNone(
-        `${s.FirstName || ""} ${s.LastName || ""}`.trim()
-      ),
+    const businessAddress =
+      s.Addresses?.find(a => a.Location === 1) ||
+      s.Addresses?.[0] ||
+      {};
 
-    "Is_Customer":
-      "No",
+    const shippingAddress =
+      s.Addresses?.find(a => a.Location === 2) ||
+      s.Addresses?.[1] ||
+      {};
 
-    "Is_Supplier":
-      "Yes",
+    const postalAddress =
+      s.Addresses?.find(a => a.Location === 3) ||
+      s.Addresses?.[2] ||
+      {};
 
-    "Status":
-      s.IsActive
-        ? "Active"
-        : "Inactive",
+    return {
 
-    // ───── BUSINESS ADDRESS ─────
+      // ───── TEMPLATE FIELDS ─────
 
-    "BUSINESS ADDRESS Line 1":
-      safe(s.Addresses?.[0]?.Street || ""),
+      "Display name":
+        cleanNone(
+          s.CompanyName ||
+          `${s.FirstName || ""} ${s.LastName || ""}`.trim()
+        ),
 
-    "BUSINESS ADDRESS line 2":
-      safe(s.Addresses?.[0]?.City || ""),
+      "Customer name":
+        cleanNone(
+          `${s.FirstName || ""} ${s.LastName || ""}`.trim()
+        ),
 
-    "BUSINESS ADDRESS line 3":
-      safe(s.Addresses?.[0]?.Region || ""),
+      "Is_Customer": "No",
 
-    "BUSINESS ADDRESS Suburb":
-      safe(s.Addresses?.[0]?.City || ""),
+      "Is_Supplier": "Yes",
 
-    "BUSINESS ADDRESS State":
-      safe(s.Addresses?.[0]?.State || ""),
+      "Status":
+        s.IsActive ? "Active" : "Inactive",
 
-    "BUSINESS ADDRESS Postcode":
-      safe(s.Addresses?.[0]?.PostCode || ""),
+      // ───── BUSINESS ADDRESS ─────
 
-    "BUSINESS ADDRESS Country":
-      safe(s.Addresses?.[0]?.Country || ""),
+      "BUSINESS ADDRESS Line 1":
+        safe(businessAddress.Street),
 
-    // ───── SHIPPING ADDRESS ─────
+      "BUSINESS ADDRESS line 2":
+        safe(businessAddress.City),
 
-    "SHIPPING ADDRESS Line 1":
-      safe(s.Addresses?.[1]?.Street || ""),
+      "BUSINESS ADDRESS line 3":
+        safe(businessAddress.Region),
 
-    "SHIPPING ADDRESS Line 2":
-      safe(s.Addresses?.[1]?.City || ""),
+      "BUSINESS ADDRESS Suburb":
+        safe(businessAddress.City),
 
-    "SHIPPING ADDRESS Line 3":
-      safe(s.Addresses?.[1]?.Region || ""),
+      "BUSINESS ADDRESS State":
+        safe(businessAddress.State),
 
-    "SHIPPING ADDRESS Suburb":
-      safe(s.Addresses?.[1]?.City || ""),
+      "BUSINESS ADDRESS Postcode":
+        safe(businessAddress.PostCode),
 
-    "SHIPPING ADDRESS State":
-      safe(s.Addresses?.[1]?.State || ""),
+      "BUSINESS ADDRESS Country":
+        safe(businessAddress.Country),
 
-    "SHIPPING ADDRESS Postcode":
-      safe(s.Addresses?.[1]?.PostCode || ""),
+      // ───── SHIPPING ADDRESS ─────
 
-    "SHIPPING ADDRESS Country":
-      safe(s.Addresses?.[1]?.Country || ""),
+      "SHIPPING ADDRESS Line 1":
+        safe(shippingAddress.Street),
 
-    // ───── POSTAL ADDRESS ─────
+      "SHIPPING ADDRESS Line 2":
+        safe(shippingAddress.City),
 
-    "POSTAL ADDRESS Line 1":
-      safe(s.Addresses?.[2]?.Street || ""),
+      "SHIPPING ADDRESS Line 3":
+        safe(shippingAddress.Region),
 
-    "POSTAL ADDRESS Line 2":
-      safe(s.Addresses?.[2]?.City || ""),
+      "SHIPPING ADDRESS Suburb":
+        safe(shippingAddress.City),
 
-    "POSTAL ADDRESS Line 3":
-      safe(s.Addresses?.[2]?.Region || ""),
+      "SHIPPING ADDRESS State":
+        safe(shippingAddress.State),
 
-    "POSTAL ADDRESS Suburb":
-      safe(s.Addresses?.[2]?.City || ""),
+      "SHIPPING ADDRESS Postcode":
+        safe(shippingAddress.PostCode),
 
-    "POSTAL ADDRESS State":
-      safe(s.Addresses?.[2]?.State || ""),
+      "SHIPPING ADDRESS Country":
+        safe(shippingAddress.Country),
 
-    "POSTAL ADDRESS Postcode":
-      safe(s.Addresses?.[2]?.PostCode || ""),
+      // ───── POSTAL ADDRESS ─────
 
-    "POSTAL ADDRESS Country":
-      safe(s.Addresses?.[2]?.Country || ""),
+      "POSTAL ADDRESS Line 1":
+        safe(postalAddress.Street),
 
-    // ───── OTHER DETAILS ─────
+      "POSTAL ADDRESS Line 2":
+        safe(postalAddress.City),
 
-    "ABN":
-      safe(s.BuyingDetails?.ABN),
+      "POSTAL ADDRESS Line 3":
+        safe(postalAddress.Region),
 
-    "Branch":
-      safe(s.Branch),
+      "POSTAL ADDRESS Suburb":
+        safe(postalAddress.City),
 
-    "Email":
-      safe(s.Email),
+      "POSTAL ADDRESS State":
+        safe(postalAddress.State),
 
-    "Skype":
-      safe(s.SkypeID),
+      "POSTAL ADDRESS Postcode":
+        safe(postalAddress.PostCode),
 
-    "Other email":
-      safe(s.OtherEmail),
+      "POSTAL ADDRESS Country":
+        safe(postalAddress.Country),
 
-    "Personal email":
-      safe(s.PersonalEmail),
+      // ───── OTHER DETAILS ─────
 
-    "Work email":
-      safe(s.WorkEmail),
+      "ABN":
+        safe(s.BuyingDetails?.ABN),
 
-    "Notes":
-      safe(s.Notes),
+      "Branch":
+        safe(s.Branch),
 
-    "Web":
-      safe(s.Website),
+      "Email":
+        safe(businessAddress.Email),
 
-    "Mobile":
-      safe(s.Phone1?.Number),
+      "Skype":
+        safe(s.SkypeID),
 
-    "Phone":
-      safe(s.Phone2?.Number),
+      "Other email":
+        safe(s.OtherEmail),
 
-    "Fax":
-      safe(s.FaxNumber),
+      "Personal email":
+        safe(s.PersonalEmail),
 
-    "Other Phone":
-      safe(s.Phone3?.Number),
+      "Work email":
+        safe(s.WorkEmail),
 
-    "Primary Phone":
-      safe(s.Phone1?.Number),
+      "Notes":
+        safe(s.Notes),
 
-    "Home Phone":
-      safe(s.Phone2?.Number),
+      "Web":
+        safe(businessAddress.Website),
 
-    "Work Phone":
-      safe(s.Phone3?.Number),
+      "Mobile":
+        safe(businessAddress.Phone1),
 
-    // ───── BANK DETAILS ─────
+      "Phone":
+        safe(businessAddress.Phone1),
 
-    "bank name":
-      safe(s.BankAccountDetails?.BankName),
+      "Fax":
+        safe(businessAddress.Fax),
 
-    "bank branch number":
-      safe(s.BankAccountDetails?.BranchNumber),
+      "Other Phone":
+        safe(businessAddress.Phone3),
 
-    "bank account number":
-      safe(s.BankAccountDetails?.AccountNumber),
-  }));
+      "Primary Phone":
+        safe(businessAddress.Phone1),
 
+      "Home Phone":
+        safe(businessAddress.Phone2),
+
+      "Work Phone":
+        safe(businessAddress.Phone3),
+
+      // ───── BANK DETAILS ─────
+
+      "bank name":
+        safe(s.PaymentDetails?.BankAccountName),
+
+      "bank branch number":
+        safe(s.PaymentDetails?.BSBNumber),
+
+      "bank account number":
+        safe(s.PaymentDetails?.BankAccountNumber),
+    };
+  });
+};
 // ── 4. Accounts (/GeneralLedger/Account) ─────────────────────
 export const flattenMYOBAccounts = (items) =>
   items.map((a) => ({

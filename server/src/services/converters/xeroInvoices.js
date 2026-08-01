@@ -43,6 +43,8 @@ export const flattenXeroInvoiceTimeBilling = (invoices) => {
 
 export const flattenXeroInvoices = (invoices) => {
 
+  console.log(JSON.stringify(invoices, null, 2))
+
   const rows = [];
 
   for (const inv of invoices) {

@@ -1,32 +1,7 @@
-import XLSX from "xlsx";
 import { getCachedExtraction } from "../services/extractionCacheService.js";
 import ExtractionHistory from "../models/ExtractionHistory.model.js";
 import { convertToQBO, convertToMYOBRaw, convertToXero } from "../services/conversionService.js";
-
-const ROWS_PER_SHEET = 50000;
-
-// ── Helper: build XLSX workbook from rows ─────────────────────
-const buildWorkbook = (rows) => {
-  const wb   = XLSX.utils.book_new();
-  const keys = rows.length ? Object.keys(rows[0]) : [];
-
-  if (rows.length <= ROWS_PER_SHEET) {
-    // Single sheet
-    const ws = XLSX.utils.json_to_sheet(rows, { header: keys });
-    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-  } else {
-    // Split into multiple sheets
-    let sheetNum = 1;
-    for (let i = 0; i < rows.length; i += ROWS_PER_SHEET) {
-      const chunk = rows.slice(i, i + ROWS_PER_SHEET);
-      const ws    = XLSX.utils.json_to_sheet(chunk, { header: keys });
-      XLSX.utils.book_append_sheet(wb, ws, `Sheet${sheetNum}`);
-      sheetNum++;
-    }
-  }
-
-  return wb;
-};
+import { streamWorkbookToResponse } from "../services/excelStreamService.js";
 
 // ── POST /api/download/excel ──────────────────────────────────
 export const downloadExcel = async (req, res, next) => {
@@ -69,19 +44,20 @@ export const downloadExcel = async (req, res, next) => {
       return res.status(404).json({ error: "No data to export." });
     }
 
-    // ── Build Excel workbook ──────────────────────────────────
-    const wb       = buildWorkbook(rows);
-    const buffer   = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    // ── Stream Excel workbook directly to the response ────────
+    // No full workbook/buffer is ever built in memory — rows are
+    // written and committed to the HTTP stream one at a time (see
+    // services/excelStreamService.js for why this matters at 200k+ rows).
     const filename = `${outputFormat}_${dataType}${subType ? "_" + subType : ""}_${startDate}_${endDate}.xlsx`;
-
-    // ── Stream to frontend ────────────────────────────────────
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    res.setHeader("Content-Length", buffer.length);
-    res.send(buffer);
-
-    console.log(`📥 Excel downloaded: ${filename} (${rows.length} rows, ${buffer.length} bytes)`);
+    await streamWorkbookToResponse(res, filename, rows);
   } catch (err) {
+    // If streaming already started, headers (and possibly bytes) have
+    // been sent — we can't send a JSON error body anymore, just abort.
+    if (res.headersSent) {
+      console.error("❌ Excel stream failed mid-write:", err.message);
+      res.destroy(err);
+      return;
+    }
     next(err);
   }
 };
