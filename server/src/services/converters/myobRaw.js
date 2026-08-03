@@ -850,30 +850,55 @@ export const flattenMYOBCreditRefund = (items) => {
 // Endpoint: /Purchase/DebitSettlement
 // NOTE: this is a settlement record — Lines only contain a Bill
 // reference + AmountApplied, there is no Item/Account/Qty detail.
-export const flattenMYOBVendorCredit = (items) => {
+// export const flattenMYOBVendorCredit = (items) => {
+//   const rows = [];
+//   for (const vc of items) {
+//     const lines = vc.Lines?.length ? vc.Lines : [{}];
+//     for (const line of lines) {
+//       rows.push({
+//         "Supplier": cleanNone(vc.Supplier?.Name || vc.Supplier?.DisplayID),
+//         "Number": vc.Number || "",
+//         "Date": fmtDate(vc.Date),
+//         "Debit Amount": vc.Amount ?? vc.DebitAmount ?? "",
+//         "Memo": vc.Memo || "",
+//         "Debit From Bill No": vc.Bill?.Number || "",
+//         "Bill No (applied)": line.Purchase?.Number || "",
+//         "Amount Applied": line.AmountApplied ?? "",
+//         "Currency Code": vc.ForeignCurrency?.Code || "AUD",
+//         "Supplier UID": vc.Supplier?.UID || "",
+//         "Bill UID": vc.Bill?.UID || "",
+//         "Applied Bill UID": line.Purchase?.UID || "",
+//         "UID": vc.UID || "",
+//       });
+//     }
+//   }
+//   return rows;
+// };
+
+export const flattenMyobVendorCredit = (items) => {
+  // remove this line — was only for debugging, and had args backwards anyway
+  // console.log(JSON.stringify(items, 2, null))
   const rows = [];
   for (const vc of items) {
     const lines = vc.Lines?.length ? vc.Lines : [{}];
     for (const line of lines) {
       rows.push({
-        "Supplier": cleanNone(vc.Supplier?.Name || vc.Supplier?.DisplayID),
-        "Number": vc.Number || "",
-        "Date": fmtDate(vc.Date),
-        "Debit Amount": vc.Amount ?? vc.DebitAmount ?? "",
-        "Memo": vc.Memo || "",
-        "Debit From Bill No": vc.Bill?.Number || "",
-        "Bill No (applied)": line.Purchase?.Number || "",
-        "Amount Applied": line.AmountApplied ?? "",
-        "Currency Code": vc.ForeignCurrency?.Code || "AUD",
-        "Supplier UID": vc.Supplier?.UID || "",
-        "Bill UID": vc.Bill?.UID || "",
-        "Applied Bill UID": line.Purchase?.UID || "",
-        "UID": vc.UID || "",
+        "UID":                 vc.UID || "",
+        "DebitFromBill_Credit": vc?.DebitFromBill?.Number || "",   // ✅ confirmed correct
+        "Supplier":            cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName || vc.Supplier?.DisplayID),
+        "Number":              vc.Number || "",
+        "Date":                fmtDate(vc.Date),
+        "DebitAmount":         vc.Amount ?? vc.DebitAmount ?? "",   // ✅ correct — header total, one per credit
+        "Memo":                vc.Memo || "",
+        "Bill Id":             line.Purchase?.Number || "",        // ✅ correct — per-line bill reference
+        "AmountApplied":       line.AmountApplied ?? "",           // ✅ correct — per-line applied amount
+        "ForeignCurrency":     vc.ForeignCurrency?.Code || "",
       });
     }
   }
   return rows;
 };
+
 
 // ── MYOB Debit Refund — raw flat ───────────────────────────────
 // Endpoint: /Purchase/DebitRefund

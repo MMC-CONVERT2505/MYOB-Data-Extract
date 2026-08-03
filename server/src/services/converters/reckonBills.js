@@ -82,35 +82,60 @@ export const flattenReckonBills = (bills) => {
 // AmountApplied. There is no Item/Account/Qty/Tax detail on this
 // endpoint, so those columns stay blank; one row is produced per
 // applied bill (a credit split across multiple bills → multiple rows).
-export const flattenReckonSupplierReturn = (items) => {
+// export const flattenReckonSupplierReturn = (items) => {
+//   const rows = [];
+//   for (const vc of items) {
+//     const lines = vc.Lines?.length ? vc.Lines : [{}];
+//     for (const line of lines) {
+//       const appliedAmount = Number(line.AmountApplied ?? vc.Amount ?? vc.DebitAmount ?? 0);
+//       rows.push({
+//         "Bill number":             line.Purchase?.Number || vc.Bill?.Number || "",
+//         "Supplier":                cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName),
+//         "Transaction date":        fmtDate(vc.Date),
+//         "Due date":                "",
+//         "Supplier invoice number": vc.Number || "",
+//         "Amounts are":             "Tax exclusive",
+//         "Item":                    "",
+//         "Description":             vc.Memo || "",
+//         "Account No.":             "",
+//         "No. of Unit":             -1,
+//         "Unit Price":              Math.abs(appliedAmount),
+//         "Discount %":              "",
+//         "Amount ($)":              -Math.abs(appliedAmount),
+//         "Tax code":                "",
+//         "Tax amount ($)":          "",
+//         "Job No.":                 "",
+//         "Job name":                "",
+//       });
+//     }
+//   }
+//   return rows;
+// };
+
+export const flattenReckonVendorCredit = (items) => {
+  // remove this line — was only for debugging, and had args backwards anyway
+  // console.log(JSON.stringify(items, 2, null))
   const rows = [];
   for (const vc of items) {
     const lines = vc.Lines?.length ? vc.Lines : [{}];
     for (const line of lines) {
-      const appliedAmount = Number(line.AmountApplied ?? vc.Amount ?? vc.DebitAmount ?? 0);
       rows.push({
-        "Bill number":             line.Purchase?.Number || vc.Bill?.Number || "",
-        "Supplier":                cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName),
-        "Transaction date":        fmtDate(vc.Date),
-        "Due date":                "",
-        "Supplier invoice number": vc.Number || "",
-        "Amounts are":             "Tax exclusive",
-        "Item":                    "",
-        "Description":             vc.Memo || "",
-        "Account No.":             "",
-        "No. of Unit":             -1,
-        "Unit Price":              Math.abs(appliedAmount),
-        "Discount %":              "",
-        "Amount ($)":              -Math.abs(appliedAmount),
-        "Tax code":                "",
-        "Tax amount ($)":          "",
-        "Job No.":                 "",
-        "Job name":                "",
+        "UID":                 vc.UID || "",
+        "DebitFromBill_Credit": vc?.DebitFromBill?.Number || "",   // ✅ confirmed correct
+        "Supplier":            cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName || vc.Supplier?.DisplayID),
+        "Number":              vc.Number || "",
+        "Date":                fmtDate(vc.Date),
+        "DebitAmount":         vc.Amount ?? vc.DebitAmount ?? "",   // ✅ correct — header total, one per credit
+        "Memo":                vc.Memo || "",
+        "Bill Id":             line.Purchase?.Number || "",        // ✅ correct — per-line bill reference
+        "AmountApplied":       line.AmountApplied ?? "",           // ✅ correct — per-line applied amount
+        "ForeignCurrency":     vc.ForeignCurrency?.Code || "",
       });
     }
   }
   return rows;
 };
+
 // ── 3. Bill Payments → "Supplier Payment" sheet ──────────────────
 // Endpoint: /Purchase/Bill/Payment
 export const flattenReckonSupplierPayment = (payments) => {

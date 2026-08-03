@@ -18,8 +18,9 @@ import {
 
 import {
   flattenReckonBills,
-  flattenReckonSupplierReturn,
+  // flattenReckonSupplierReturn,
   flattenReckonSupplierPayment,
+  flattenReckonVendorCredit,
 } from "./converters/reckonBills.js";
 
 import {
@@ -84,7 +85,7 @@ import {
   flattenMYOBQuote,
   flattenMYOBCreditRefund,
   flattenMYOBInvoiceTimeBilling,
-  flattenMYOBVendorCredit,
+  flattenMyobVendorCredit,
   flattenMYOBDebitRefund,
 } from "./converters/myobRaw.js";
 
@@ -282,7 +283,7 @@ export const convertToMYOBRaw = (items, dataType, subType = null, businessName =
       return flattenMYOBCreditRefund(items);
 
           case "vendorCredits":
-      return flattenMYOBVendorCredit(items);
+      return flattenMyobVendorCredit(items);
 
     case "debitRefunds":
       return flattenMYOBDebitRefund(items);
@@ -345,7 +346,7 @@ export const convertToReckon = (items, dataType, subType = null, businessName = 
     case "creditNotes":
       return flattenMYOBCreditNote(items);
     case "vendorCredits":
-      return flattenReckonSupplierReturn(items);
+      return flattenReckonVendorCredit(items);
     case "invoicePayments":
       return flattenReckonCustomerPayment(items);
     case "billPayments":

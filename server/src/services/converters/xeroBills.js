@@ -277,29 +277,54 @@ export const flattenXEROCreditNote = (creditNotes) => {
 // ── Xero Vendor Credits ───────────────────────────────────────
 // Endpoint: /Purchase/DebitSettlement
 // NOTE: settlement record — one row per Bill this credit was applied to.
+// export const flattenXeroVendorCredit = (items) => {
+//   const rows = [];
+//   for (const vc of items) {
+//     const lines = vc.Lines?.length ? vc.Lines : [{}];
+//     const contactName = cleanNone(
+//       vc.Supplier?.CompanyName || vc.Supplier?.Name || vc.Supplier?.DisplayID
+//     );
+
+//     for (const line of lines) {
+//       rows.push({
+//         "ContactName":    contactName,
+//         "CreditNoteNumber": vc.Number || "",
+//         "Date":           fmtDate(vc.Date),
+//         "BillNumber":     line.Purchase?.Number || "",
+//         "AppliedAmount":  line.AmountApplied ?? "",
+//         "TotalAmount":    vc.Amount ?? vc.DebitAmount ?? "",
+//         "Reference":      vc.Memo || "",
+//         "CurrencyCode":   vc.ForeignCurrency?.Code || "AUD",
+//       });
+//     }
+//   }
+//   return rows;
+// };
+
 export const flattenXeroVendorCredit = (items) => {
+  // remove this line — was only for debugging, and had args backwards anyway
+  // console.log(JSON.stringify(items, 2, null))
   const rows = [];
   for (const vc of items) {
     const lines = vc.Lines?.length ? vc.Lines : [{}];
-    const contactName = cleanNone(
-      vc.Supplier?.CompanyName || vc.Supplier?.Name || vc.Supplier?.DisplayID
-    );
-
     for (const line of lines) {
       rows.push({
-        "ContactName":    contactName,
-        "CreditNoteNumber": vc.Number || "",
-        "Date":           fmtDate(vc.Date),
-        "BillNumber":     line.Purchase?.Number || "",
-        "AppliedAmount":  line.AmountApplied ?? "",
-        "TotalAmount":    vc.Amount ?? vc.DebitAmount ?? "",
-        "Reference":      vc.Memo || "",
-        "CurrencyCode":   vc.ForeignCurrency?.Code || "AUD",
+        "UID":                 vc.UID || "",
+        "DebitFromBill_Credit": vc?.DebitFromBill?.Number || "",   // ✅ confirmed correct
+        "Supplier":            cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName || vc.Supplier?.DisplayID),
+        "Number":              vc.Number || "",
+        "Date":                fmtDate(vc.Date),
+        "DebitAmount":         vc.Amount ?? vc.DebitAmount ?? "",   // ✅ correct — header total, one per credit
+        "Memo":                vc.Memo || "",
+        "Bill Id":             line.Purchase?.Number || "",        // ✅ correct — per-line bill reference
+        "AmountApplied":       line.AmountApplied ?? "",           // ✅ correct — per-line applied amount
+        "ForeignCurrency":     vc.ForeignCurrency?.Code || "",
       });
     }
   }
   return rows;
 };
+
 
 // ── Xero Debit Refund ─────────────────────────────────────────
 // Endpoint: /Purchase/DebitRefund
