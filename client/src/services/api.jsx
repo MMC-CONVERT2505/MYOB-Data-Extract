@@ -71,4 +71,8 @@ export const summaryAPI = {
   getProfile:      ()     => api.get("/api/summary/profile"),
   getTransactions: (body) => api.post("/api/summary/transactions", body),
   getFull:         (body) => api.post("/api/summary", body),
+
+  // ── Async summary (large files / 502-safe) ──────────────────
+  startAsync:   (body)  => api.post("/api/summary/async", body),
+  getJobStatus: (jobId) => api.get(`/api/summary/status/${jobId}`),
 };

@@ -1095,18 +1095,23 @@ function billTypeSegment(bill) {
  *
  * NOTE: this is still an N+1 call (one Attachment lookup per bill) and is
  * now the single largest remaining cost in the whole summary, now that
- * the invoice/bill line-detail fetch is gone. If you're still seeing
- * slow responses / 502s on files with a large number of bills, this is
- * the next thing to optimize — e.g. make it optional (a
- * `includeAttachments` flag), or move it to a background job. MYOB
- * doesn't currently expose a bulk/report-style attachment-count endpoint
- * the way it does for journal lines.
+ * the invoice/bill line-detail fetch is gone. MYOB doesn't currently
+ * expose a bulk/report-style attachment-count endpoint the way it does
+ * for journal lines. As of the async-job change (see
+ * asyncSummaryService.js), this phase now runs in the background instead
+ * of inline in the HTTP request, so it no longer causes 502s — it's just
+ * still the slowest phase.
+ *
+ * `onProgress(processed, total)` is optional — pass it to get incremental
+ * updates as batches complete, e.g. for job-progress reporting. Existing
+ * callers that don't pass it behave exactly as before.
  */
-export async function getBillAttachmentCount(dbUser, userId, bills) {
+export async function getBillAttachmentCount(dbUser, userId, bills, { onProgress } = {}) {
   if (!bills || bills.length === 0) return 0;
 
   const BATCH = 4; // smaller batches — attachment endpoint is slower/heavier than plain list calls
   let total = 0;
+  let processed = 0;
 
   for (let i = 0; i < bills.length; i += BATCH) {
     const slice = bills.slice(i, i + BATCH);
@@ -1128,6 +1133,16 @@ export async function getBillAttachmentCount(dbUser, userId, bills) {
       })
     );
     total += results.reduce((s, items) => s + (items?.length || 0), 0);
+    processed += slice.length;
+
+    if (onProgress) {
+      try {
+        await onProgress(processed, bills.length);
+      } catch (e) {
+        // Progress reporting must never break the actual count.
+        console.log(`⚠️ getBillAttachmentCount: onProgress callback failed — ${e.message}`);
+      }
+    }
 
     // Brief pause between batches to avoid stacking more 504s on an
     // already-slow cloud endpoint.

@@ -15,6 +15,7 @@ import usageRoutes      from "./routes/usageRoutes.js";
 import downloadRoutes   from "./routes/downloadRoutes.js";
 import summaryRoutes    from "./routes/summaryRoutes.js";
 import { markStaleJobsFailed } from "./services/asyncExtractionService.js";
+import { markStaleSummaryJobsFailed } from "./services/asyncSummaryService.js";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -26,6 +27,7 @@ await connectDB();
 // (default 60) was orphaned by a crash or PM2 restart. Mark them failed
 // so users aren't left with jobs that show "pending" forever.
 await markStaleJobsFailed();
+await markStaleSummaryJobsFailed();
 
 const app = express();
 

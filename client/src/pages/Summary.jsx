@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { summaryAPI } from "../services/api";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -19,10 +19,28 @@ const fmtDMY = (iso) => {
   return `${d}.${m}.${y}`;
 };
 
+// Human-readable label for each async job phase — shown instead of a
+// blind spinner so the person can see it's actually making progress,
+// especially during "attachments" which is the slow one.
+const PHASE_LABELS = {
+  queued: "Queued…",
+  profile: "Reading file profile…",
+  transactions: "Counting accounts and transactions across all modules…",
+  attachments: "Counting bill attachments…",
+  done: "Finishing up…",
+};
+
 /**
  * Migration Summary page — ported from the MYOB Desktop Pro tool's
  * "Get Summary" module. Fetches the file profile + the transaction
  * counts for a conversion date range from /api/summary.
+ *
+ * Runs as an async job (POST /api/summary/async → poll
+ * /api/summary/status/:jobId) instead of one blocking request, so large
+ * files (thousands of bills → the attachment-count phase alone can take
+ * minutes) never hit a 502/504 from the reverse proxy — the initial
+ * request returns a jobId in milliseconds and the actual work continues
+ * server-side while the frontend polls for progress.
  */
 export default function Summary() {
   const [startDate, setStartDate] = useState(yearsAgo(2));
@@ -33,6 +51,48 @@ export default function Summary() {
   const [summary, setSummary] = useState(null);
   const summaryRef = useRef(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  // ── Async job state — mirrors Dashboard.jsx's extraction polling ──
+  const [asyncJob, setAsyncJob] = useState(null);
+  // shape: { jobId, status, progress: { phase, billsProcessed, billsTotal } }
+  const pollRef = useRef(null);
+
+  const clearPoll = () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  };
+
+  // Poll every 5s — summary jobs are much shorter-lived than bulk
+  // extractions, so a tighter interval keeps the UI feeling responsive
+  // without hammering the server.
+  const startPolling = (jobId) => {
+    clearPoll();
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await summaryAPI.getJobStatus(jobId);
+        const job = res.data;
+        setAsyncJob(job);
+
+        if (job.status === "successful") {
+          clearPoll();
+          setLoading(false);
+          setSummary(job.result);
+          setAsyncJob(null);
+        }
+
+        if (job.status === "failed") {
+          clearPoll();
+          setLoading(false);
+          setError(job.errorMessage || "Summary generation failed.");
+          setAsyncJob(null);
+        }
+      } catch (pollErr) {
+        console.warn("Summary job status poll error:", pollErr.message);
+      }
+    }, 5000);
+  };
+
+  // Clean up poll on unmount.
+  useEffect(() => { return () => clearPoll(); }, []);
 
   // Manual (operator-entered) fields — mirror of the desktop tool.
  const [manual, setManual] = useState({
@@ -86,15 +146,19 @@ export default function Summary() {
   }
 
   async function handleFetch() {
+    clearPoll();
     setLoading(true);
     setError(null);
+    setSummary(null);
+    setAsyncJob(null);
     try {
-      const res = await summaryAPI.getFull({ startDate, endDate, accountingBasis });
-      setSummary(res.data.data);
+      const res = await summaryAPI.startAsync({ startDate, endDate, accountingBasis });
+      const { jobId } = res.data;
+      setAsyncJob({ jobId, status: "queued", progress: { phase: "queued", billsProcessed: 0, billsTotal: 0 } });
+      startPolling(jobId);
     } catch (err) {
-      setError(err.response?.data?.error?.message || err.response?.data?.error || err.message || "Failed to fetch summary.");
-    } finally {
       setLoading(false);
+      setError(err.response?.data?.error?.message || err.response?.data?.error || err.message || "Failed to start summary.");
     }
   }
 
@@ -205,7 +269,15 @@ export default function Summary() {
         {loading && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 flex flex-col items-center gap-3 text-slate-500">
             <Loader2 size={28} className="animate-spin text-teal-500" />
-            <p className="text-sm">Counting accounts and transactions across all modules…</p>
+            <p className="text-sm">
+              {PHASE_LABELS[asyncJob?.progress?.phase] || "Starting…"}
+            </p>
+            {asyncJob?.progress?.phase === "attachments" && asyncJob.progress.billsTotal > 0 && (
+              <p className="text-xs text-slate-400">
+                {asyncJob.progress.billsProcessed.toLocaleString()} / {asyncJob.progress.billsTotal.toLocaleString()} bills checked
+              </p>
+            )}
+            <p className="text-[11px] text-slate-300">Polling every 5s — safe to leave this tab open</p>
           </div>
         )}
 
