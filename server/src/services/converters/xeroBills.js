@@ -244,7 +244,8 @@ export const flattenXeroBillPayments = (payments) => {
 
         "CurrencyRate": p.CurrencyExchangeRate ?? 1,
 
-        "UID": p?.UID,
+        "Bill UID":
+          line?.Purchase?.UID || "",
       });
     }
   }

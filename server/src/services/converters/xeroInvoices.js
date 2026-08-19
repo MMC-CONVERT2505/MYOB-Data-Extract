@@ -324,7 +324,7 @@ export const flattenXeroInvoicePayments = (payments) => {
 
         "CurrencyRate": p.CurrencyExchangeRate ?? 1,
 
-        "UID" : p?.UID,
+        "UID" : inv?.UID,
       });
     }
   }
