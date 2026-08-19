@@ -475,7 +475,7 @@ export const flattenQBOVendorCredit = (items) => {
     const lines = vc.Lines?.length ? vc.Lines : [{}];
     for (const line of lines) {
       rows.push({
-        "UID":                 vc.UID || "",
+        "UID":                 line.Purchase?.UID || "",
         "DebitFromBill_Credit": vc?.DebitFromBill?.Number || "",   // ✅ confirmed correct
         "Supplier":            cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName || vc.Supplier?.DisplayID),
         "Number":              vc.Number || "",
