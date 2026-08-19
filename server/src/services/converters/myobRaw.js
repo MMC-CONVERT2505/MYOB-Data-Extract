@@ -808,8 +808,7 @@ export const flattenMYOBBillPayment = (payments) => {
           "",
 
         "Bill UID":
-          p?.UID ||
-          "",
+          line?.Purchase?.UID || "",
       });
     }
   }
