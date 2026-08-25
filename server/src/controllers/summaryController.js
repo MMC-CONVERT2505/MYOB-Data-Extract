@@ -39,12 +39,12 @@ export const transactions = async (req, res, next) => {
   }
 };
 
-// POST /api/summary — full summary { startDate?, endDate?, accountingBasis? }
+// POST /api/summary — full summary { startDate?, endDate?, accountingBasis?, inception? }
 export const full = async (req, res, next) => {
   try {
     const { dbUser, userId } = getAuth(req);
-    const { startDate, endDate, accountingBasis } = req.body || {};
-    const data = await getFullSummary(dbUser, userId, { startDate, endDate, accountingBasis });
+    const { startDate, endDate, accountingBasis, inception } = req.body || {};
+    const data = await getFullSummary(dbUser, userId, { startDate, endDate, accountingBasis, inception });
     res.json({ success: true, data });
   } catch (err) {
     next(err);

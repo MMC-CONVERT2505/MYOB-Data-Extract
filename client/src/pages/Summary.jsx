@@ -4,7 +4,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import {
   PieChart, Calendar, Loader2, AlertCircle, Printer, Download,
-  Building2, Landmark, CreditCard, Users, Package,
+  Building2, Landmark, CreditCard, Users, Package, Infinity as InfinityIcon,
 } from "lucide-react";
 
 const today = () => new Date().toISOString().split("T")[0];
@@ -46,6 +46,13 @@ export default function Summary() {
   const [startDate, setStartDate] = useState(yearsAgo(2));
   const [endDate, setEndDate] = useState(today());
   const [accountingBasis, setAccountingBasis] = useState("Accrual");
+  // Inception feature (Summary page only): when ON, fetch ALL data from the
+  // company file's real first-ever transaction date till today, instead of
+  // a manual date range. The real earliest date is computed server-side
+  // (see summaryService.js findEarliestDate()) from the actual fetched data
+  // — nothing is guessed on the frontend.
+  const [inceptionMode, setInceptionMode] = useState(false);
+  const [preInceptionRange, setPreInceptionRange] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [summary, setSummary] = useState(null);
@@ -77,6 +84,14 @@ export default function Summary() {
           setLoading(false);
           setSummary(job.result);
           setAsyncJob(null);
+          // Inception mode: reflect the REAL earliest date the backend found
+          // (job.result.transactions.dateRange.startDate) back into the date
+          // field, so the UI shows the actual first-ever transaction date
+          // instead of our placeholder.
+          const realStart = job.result?.transactions?.dateRange?.startDate;
+          if (inceptionMode && realStart) {
+            setStartDate(realStart);
+          }
         }
 
         if (job.status === "failed") {
@@ -145,6 +160,26 @@ export default function Summary() {
     }
   }
 
+  // Toggle "Inception" — remembers the manual range so switching back OFF
+  // restores exactly what the user had picked before. The startDate we set
+  // here is just a harmless placeholder (backend ignores it and computes
+  // the file's REAL earliest transaction date once the job runs — see
+  // startPolling above, which overwrites startDate with that real value).
+  function toggleInception() {
+    if (!inceptionMode) {
+      setPreInceptionRange({ startDate, endDate });
+      setStartDate(endDate);
+      setEndDate(today());
+      setInceptionMode(true);
+    } else {
+      if (preInceptionRange) {
+        setStartDate(preInceptionRange.startDate);
+        setEndDate(preInceptionRange.endDate);
+      }
+      setInceptionMode(false);
+    }
+  }
+
   async function handleFetch() {
     clearPoll();
     setLoading(true);
@@ -152,7 +187,7 @@ export default function Summary() {
     setSummary(null);
     setAsyncJob(null);
     try {
-      const res = await summaryAPI.startAsync({ startDate, endDate, accountingBasis });
+      const res = await summaryAPI.startAsync({ startDate, endDate, accountingBasis, inception: inceptionMode });
       const { jobId } = res.data;
       setAsyncJob({ jobId, status: "queued", progress: { phase: "queued", billsProcessed: 0, billsTotal: 0 } });
       startPolling(jobId);
@@ -203,7 +238,7 @@ export default function Summary() {
       <div className="p-8 max-w-4xl mx-auto space-y-5">
         {/* Controls */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 print:hidden">
-          <div className="grid gap-4 sm:grid-cols-4 items-end">
+          <div className="grid gap-4 sm:grid-cols-5 items-end">
             <div>
               <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-slate-400">
                 Conversion start date
@@ -214,7 +249,8 @@ export default function Summary() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full bg-transparent text-sm font-semibold outline-none text-slate-700"
+                  disabled={inceptionMode}
+                  className="w-full bg-transparent text-sm font-semibold outline-none text-slate-700 disabled:opacity-50"
                 />
               </div>
             </div>
@@ -228,7 +264,8 @@ export default function Summary() {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full bg-transparent text-sm font-semibold outline-none text-slate-700"
+                  disabled={inceptionMode}
+                  className="w-full bg-transparent text-sm font-semibold outline-none text-slate-700 disabled:opacity-50"
                 />
               </div>
             </div>
@@ -245,6 +282,21 @@ export default function Summary() {
                 <option>Cash</option>
               </select>
             </div>
+            <button
+              type="button"
+              onClick={toggleInception}
+              disabled={loading}
+              title="Fetch the company file's entire data, from inception to today"
+              className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200 active:scale-95 disabled:opacity-60 border ${
+                inceptionMode
+                  ? "text-white border-transparent"
+                  : "text-slate-600 border-slate-200 bg-slate-50 hover:bg-slate-100"
+              }`}
+              style={inceptionMode ? { background: "linear-gradient(135deg,#0d9488,#14b8a6)", boxShadow: "0 8px 20px -6px rgba(13,148,136,0.4)" } : undefined}
+            >
+              <InfinityIcon size={16} />
+              {inceptionMode ? "Inception: ON" : "Inception"}
+            </button>
             <button
               onClick={handleFetch}
               disabled={loading}

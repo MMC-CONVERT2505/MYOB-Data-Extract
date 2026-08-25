@@ -41,7 +41,7 @@ export async function runSummaryJob(job, dbUser) {
       $set: { status: "pending", "progress.phase": "profile" },
     });
 
-    const { startDate, endDate, accountingBasis } = job;
+    const { startDate, endDate, accountingBasis, inception } = job;
 
     // ── Phase 1: file profile ──────────────────────────────────
     const { profile, _accounts } = await getFileProfile(dbUser, userId);
@@ -59,6 +59,7 @@ export async function runSummaryJob(job, dbUser) {
         startDate,
         endDate,
         accounts: _accounts,
+        inception,
       });
       console.log(`📊 Summary job ${jobId}: transaction counts done`);
 

@@ -679,6 +679,26 @@ function withinRange(records, start, end, field = "Date") {
 }
 
 /**
+ * "Inception" feature helper — finds the earliest transaction date across
+ * one or more record arrays, checking each record's own date field
+ * (Date / DateOccurred, per record type). Used so the "Inception" fetch
+ * starts from the file's REAL first-ever transaction date instead of a
+ * guessed/static date.
+ */
+function findEarliestDate(recordArrays, field = "Date") {
+  let earliest = null;
+  for (const records of recordArrays) {
+    if (!Array.isArray(records)) continue;
+    for (const r of records) {
+      const d = dateOnly(r?.[field] || r?.Date || r?.DateOccurred);
+      if (!d) continue;
+      if (!earliest || d < earliest) earliest = d;
+    }
+  }
+  return earliest;
+}
+
+/**
  * GET all pages of a MYOB collection endpoint for the signed-in user's
  * company file, following NextPageLink (same relative-URL trick used in
  * extractionController.js).
@@ -897,8 +917,13 @@ export async function getFileProfile(dbUser, userId) {
  * `accounts` may be passed in to avoid re-fetching /GeneralLedger/Account.
  * Bank vs Credit Card is decided by the type of the account a
  * Spend/Receive Money transaction is drawn from.
+ *
+ * `inception` (optional): when true, `startDate` passed in is IGNORED and
+ * replaced with the earliest date found across all fetched record arrays
+ * below — i.e. the file's real first-ever transaction date — so "Inception"
+ * always reflects the company file's actual data, not a guessed date.
  */
-export async function getTransactionCounts(dbUser, userId, { startDate, endDate, accounts }) {
+export async function getTransactionCounts(dbUser, userId, { startDate, endDate, accounts, inception }) {
   const accountList =
     accounts || (await safeGetAll(dbUser, userId, `/GeneralLedger/Account?$top=1000`, "Account"));
 
@@ -934,6 +959,25 @@ export async function getTransactionCounts(dbUser, userId, { startDate, endDate,
     safeGetAll(dbUser, userId, `/Purchase/Order?$top=1000`, "PurchaseOrder"),
     safeGetAll(dbUser, userId, `/GeneralLedger/JournalTransaction?$top=1000`, "JournalTransaction"),
   ]);
+
+  // ── Inception: derive the REAL start date from the actual data ──────
+  // Runs only when the caller explicitly asks for it (inception === true),
+  // so the normal manual-date-range flow below is completely unaffected.
+  if (inception) {
+    const earliest = findEarliestDate(
+      [spendMoney, receiveMoney, transferMoney, invoicesAll, billsAll, purchaseOrders],
+      "Date"
+    );
+    const earliestByOccurred = findEarliestDate([journals, journalTransactions], "DateOccurred");
+    const earliestQuotes = findEarliestDate([quotes], "Date");
+
+    const candidates = [earliest, earliestByOccurred, earliestQuotes].filter(Boolean);
+    if (candidates.length > 0) {
+      startDate = candidates.reduce((min, d) => (d < min ? d : min));
+    }
+    // If the file genuinely has zero transactions anywhere, fall back to
+    // whatever startDate the caller sent (or endDate) instead of crashing.
+  }
 
   // ── Date-range filtering ──────────────────────────────────────────
   const spend = withinRange(spendMoney, startDate, endDate);
@@ -1161,8 +1205,11 @@ export async function getBillAttachmentCount(dbUser, userId, bills, { onProgress
  * Full summary = profile + transactions (+ attachment count). Reuses the
  * accounts list from the profile so /GeneralLedger/Account is fetched
  * only once. `accountingBasis` is user-selected, never fetched from MYOB.
+ *
+ * `inception` (optional): forwarded to getTransactionCounts — when true,
+ * the real earliest transaction date found in the data becomes startDate.
  */
-export async function getFullSummary(dbUser, userId, { startDate, endDate, accountingBasis }) {
+export async function getFullSummary(dbUser, userId, { startDate, endDate, accountingBasis, inception }) {
   const { profile, _accounts } = await getFileProfile(dbUser, userId);
 
   let transactions = null;
@@ -1171,6 +1218,7 @@ export async function getFullSummary(dbUser, userId, { startDate, endDate, accou
       startDate,
       endDate,
       accounts: _accounts,
+      inception,
     });
 
     const attachments = await getBillAttachmentCount(dbUser, userId, transactions._allBills);

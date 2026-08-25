@@ -21,7 +21,7 @@ export const startAsyncSummary = async (req, res, next) => {
   try {
     const userId = req.session.userId;
     const dbUser = req.dbUser;
-    const { startDate, endDate, accountingBasis } = req.body || {};
+    const { startDate, endDate, accountingBasis, inception } = req.body || {};
 
     // ── One-active-job-per-user guard, same pattern as extraction ──
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
@@ -43,6 +43,7 @@ export const startAsyncSummary = async (req, res, next) => {
       startDate: startDate || null,
       endDate: endDate || null,
       accountingBasis: accountingBasis || "Accrual",
+      inception: !!inception,
       status: "queued",
       progress: { phase: "queued", billsProcessed: 0, billsTotal: 0 },
     });

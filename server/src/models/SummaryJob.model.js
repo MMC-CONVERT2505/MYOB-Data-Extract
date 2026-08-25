@@ -41,6 +41,10 @@ const summaryJobSchema = new mongoose.Schema(
     startDate: { type: String, default: null },
     endDate: { type: String, default: null },
     accountingBasis: { type: String, default: "Accrual" },
+    // "Inception" feature — when true, the job ignores the passed-in
+    // startDate and computes the file's real earliest transaction date
+    // from the fetched records instead (see summaryService.js).
+    inception: { type: Boolean, default: false },
 
     status: {
       type: String,
