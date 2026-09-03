@@ -117,7 +117,7 @@ export const flattenReckonCustomerPayment = (payments) => {
         "Description of transaction": p.Memo || "",
         "Invoice number":             inv.Number || "",
         "Amount received":            inv.AmountApplied ?? p.AmountReceived ?? "",
-        "UID" :                       p?.UID,
+        "UID" :                       inv?.UID,
       });
     }
   }

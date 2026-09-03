@@ -434,7 +434,7 @@ export const flattenQBOBillPayments = (payments) => {
         "Currency Code": p.ForeignCurrency?.Code || "AUD",
         "Exchange Rate": p.CurrencyExchangeRate ?? 1,
         "Print Status": safe(p.DeliveryStatus),
-        "UID": p?.UID
+        "UID": line?.Purchase?.UID
       });
     }
   }
