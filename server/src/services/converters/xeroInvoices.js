@@ -209,6 +209,15 @@ export const flattenXeroInvoices = (invoices) => {
             lineTaxAmt.toFixed(2)
           ),
 
+         "Freight":
+          inv?.Freight || "",
+
+        "FreightForeign":
+          inv.FreightForeign || "",
+
+        "FreightTaxCode":
+          inv?.FreightTaxCode?.Code,
+
         "TrackingName1":
           "",
 

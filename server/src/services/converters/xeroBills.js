@@ -54,18 +54,18 @@ export const flattenXeroBills = (bills, subType) => {
       const quantity = isService
         ? 1
         : (
-            line.Quantity ??
-            line.UnitCount ??
-            line.BillQuantity ??
-            1
-          );
+          line.Quantity ??
+          line.UnitCount ??
+          line.BillQuantity ??
+          1
+        );
 
       // ✅ unit amount logic
       const unitAmount = isService
         ? lineAmount
         : Number(
-            line.UnitPrice ?? 0
-          );
+          line.UnitPrice ?? 0
+        );
 
       // ✅ tax code
       const taxCode =
@@ -155,6 +155,13 @@ export const flattenXeroBills = (bills, subType) => {
         "Line Amount":
           lineAmount,
 
+        "Freight": bill.Freight,
+
+        "FreightTaxCode": bill?.FreightTaxCode?.Code,
+
+        "FreightForeign": bill?.FreightForeign,
+
+
         "TrackingName1":
           "",
 
@@ -202,8 +209,8 @@ export const flattenXeroBillPayments = (payments) => {
     const lines = p.Lines?.length
       ? p.Lines
       : p.Bills?.length
-      ? p.Bills
-      : [{}];
+        ? p.Bills
+        : [{}];
 
     // ✅ ONLY DisplayID
     const bankAccount = p.Account?.DisplayID || "";
@@ -259,16 +266,16 @@ export const flattenXEROCreditNote = (creditNotes) => {
     const lines = cn.Lines?.length ? cn.Lines : [{}];
     for (const line of lines) {
       rows.push({
-        "UID":                line.Sale?.UID || "",
-        "CreditFromInvoice":  cn.CreditFromInvoice?.Number || "",
-        "Customer":           cleanNone(cn.Customer?.Name || cn.Customer?.CompanyName || cn.Customer?.DisplayID),
-        "Number":             cn.Number || "",
-        "Date":               fmtDate(cn.Date),
-        "CreditAmount":       cn.Amount ?? cn.CreditAmount ?? "",
-        "Memo":               cn.Memo || "",
-        "Invoice Id":         line.Sale?.Number || line.Invoice?.Number || "",
-        "AmountApplied":      line.AmountApplied ?? "",
-        "ForeignCurrency":    cn.ForeignCurrency?.Code || "",
+        "UID": line.Sale?.UID || "",
+        "CreditFromInvoice": cn.CreditFromInvoice?.Number || "",
+        "Customer": cleanNone(cn.Customer?.Name || cn.Customer?.CompanyName || cn.Customer?.DisplayID),
+        "Number": cn.Number || "",
+        "Date": fmtDate(cn.Date),
+        "CreditAmount": cn.Amount ?? cn.CreditAmount ?? "",
+        "Memo": cn.Memo || "",
+        "Invoice Id": line.Sale?.Number || line.Invoice?.Number || "",
+        "AmountApplied": line.AmountApplied ?? "",
+        "ForeignCurrency": cn.ForeignCurrency?.Code || "",
       });
     }
   }
@@ -310,16 +317,16 @@ export const flattenXeroVendorCredit = (items) => {
     const lines = vc.Lines?.length ? vc.Lines : [{}];
     for (const line of lines) {
       rows.push({
-        "UID":                 vc.UID || "",
+        "UID": vc.UID || "",
         "DebitFromBill_Credit": vc?.DebitFromBill?.Number || "",   // ✅ confirmed correct
-        "Supplier":            cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName || vc.Supplier?.DisplayID),
-        "Number":              vc.Number || "",
-        "Date":                fmtDate(vc.Date),
-        "DebitAmount":         vc.Amount ?? vc.DebitAmount ?? "",   // ✅ correct — header total, one per credit
-        "Memo":                vc.Memo || "",
-        "Bill Id":             line.Purchase?.Number || "",        // ✅ correct — per-line bill reference
-        "AmountApplied":       line.AmountApplied ?? "",           // ✅ correct — per-line applied amount
-        "ForeignCurrency":     vc.ForeignCurrency?.Code || "",
+        "Supplier": cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName || vc.Supplier?.DisplayID),
+        "Number": vc.Number || "",
+        "Date": fmtDate(vc.Date),
+        "DebitAmount": vc.Amount ?? vc.DebitAmount ?? "",   // ✅ correct — header total, one per credit
+        "Memo": vc.Memo || "",
+        "Bill Id": line.Purchase?.Number || "",        // ✅ correct — per-line bill reference
+        "AmountApplied": line.AmountApplied ?? "",           // ✅ correct — per-line applied amount
+        "ForeignCurrency": vc.ForeignCurrency?.Code || "",
       });
     }
   }
@@ -338,11 +345,11 @@ export const flattenXeroDebitRefund = (items) => {
 
     rows.push({
       "ContactName": contactName,
-      "Date":        fmtDate(dr.Date),
-      "BillNumber":  dr.Bill?.Number || "",
-      "Amount":      dr.Amount ?? "",
-      "Bank":        dr.Account?.DisplayID || "",
-      "Reference":   dr.Number || dr.Memo || "",
+      "Date": fmtDate(dr.Date),
+      "BillNumber": dr.Bill?.Number || "",
+      "Amount": dr.Amount ?? "",
+      "Bank": dr.Account?.DisplayID || "",
+      "Reference": dr.Number || dr.Memo || "",
       "CurrencyCode": dr.ForeignCurrency?.Code || "AUD",
     });
   }
