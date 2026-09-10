@@ -142,6 +142,9 @@ export const flattenXeroBills = (bills, subType) => {
         "*AccountCode":
           line.Account?.DisplayID || "",
 
+        "Discount": 
+        line?.DiscountPercent,
+
         "*TaxType":
           taxCode,
 
