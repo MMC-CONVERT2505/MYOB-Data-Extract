@@ -194,6 +194,12 @@ export const flattenXeroInvoices = (invoices) => {
         "Discount":
           line.DiscountPercent ?? "",
 
+         "Job Name":
+          line?.Job?.Name,
+
+        "Job Number":
+          line.Job?.Number,
+
         "*lineAmount":
           lineAmount,
 
