@@ -351,6 +351,9 @@ export const flattenQBOInvoiceService = (invoices) => {
         "LineAmount":
           lineAmount,
 
+        "Discount %":          
+          line?.DiscountPercent || "",
+
         "Total Invoice Amount":
           inv.TotalAmount ?? "",
 

@@ -63,7 +63,16 @@ export const flattenReckonBills = (bills) => {
         "Account No.":             l.accountNo,
         "No. of Unit":             l.qty,
         "Unit Price":              l.unitPrice,
-        "Discount %":              "",
+        "Freight": bill.Freight,
+
+        "FreightTaxCode": bill?.FreightTaxCode?.Code,
+
+        "FreightForeign": bill?.FreightForeign,
+
+         "Job Name":      l?.Job?.Name,
+
+        "Job Number" :   l?.Job?.Number,
+        "Discount %":              l?.DiscountPercent || "",
         "Amount ($)":              l.lineAmount,
         "Tax code":                l.taxCode,
         "Tax amount ($)":          Number(l.taxAmount.toFixed(2)),
@@ -151,7 +160,7 @@ export const flattenReckonSupplierPayment = (payments) => {
         "Description of transaction": p.Memo || "",
         "Bill Number":                line.Purchase?.Number || line.Number || line.BillNumber || "",
         "Amount Paid":                line.AmountApplied ?? line.Amount ?? p.AmountPaid ?? "",
-        "UID":                        p?.UID,
+        "UID":                        line?.Purchase?.UID,
       });
     }
   }

@@ -246,6 +246,10 @@ export const flattenQBOBillItems = (bills, subType) => {
         "Tax Rate":
           line.TaxCode?.Code || "",
 
+        "DiscountPercent":
+          line?.DiscountPercent,
+
+
         "Amount":
           lineTotal,
 
@@ -261,7 +265,10 @@ export const flattenQBOBillItems = (bills, subType) => {
         "Location":
           "",
 
-        "UID":
+        "Freight ($)":
+          bill.Freight ?? "",
+
+        "UID":   
           bill?.UID,
       });
     }
@@ -376,6 +383,10 @@ export const flattenQBOBillService = (bills) => {
           line.Job?.Name ||
           "",
 
+        "DiscountPercent":
+          line?.DiscountPercent,
+
+
         "Expense Tax Code":
           taxCode,
 
@@ -399,6 +410,9 @@ export const flattenQBOBillService = (bills) => {
 
         "SupplierInvoiceNumber":
           bill.SupplierInvoiceNumber || "",
+
+        "Freight ($)":
+          bill.Freight ?? "",
 
         "UID":
           bill?.UID,
