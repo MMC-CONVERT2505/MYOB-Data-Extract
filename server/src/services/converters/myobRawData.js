@@ -23,7 +23,7 @@ import { fmtDate } from "../helpers.js";
 // resulting rows are safe to hand straight to the Excel writer
 // (which takes its header row from the first row only).
 
-const isPlainObject = (val) =>
+export const isPlainObject = (val) =>
   val !== null &&
   typeof val === "object" &&
   !Array.isArray(val) &&
@@ -37,7 +37,7 @@ const isPlainObject = (val) =>
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
 const ODATA_DATE_RE = /^\/Date\(-?\d+\)\/$/;
 
-const isDateLikeString = (val) =>
+export const isDateLikeString = (val) =>
   typeof val === "string" &&
   (ISO_DATE_RE.test(val) || ODATA_DATE_RE.test(val));
 
