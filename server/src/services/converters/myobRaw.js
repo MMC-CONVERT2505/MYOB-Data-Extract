@@ -1487,8 +1487,8 @@ export const flattenMYOBQuote = (quotes, businessName) => {
 
         // Job
         "Line.Job.UID": line.Job?.UID || "",
-        "Line.Job.Number": line.Job?.Number || "",
-        "Line.Job.Name": line.Job?.Name || "",
+        "line?.Job?.Number": line.Job?.Number || "",
+        "line?.Job?.Name": line.Job?.Name || "",
 
         // Tax
         "Line.TaxCode.UID": line.TaxCode?.UID || "",
