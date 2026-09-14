@@ -134,6 +134,65 @@ const dlExcel = (items, name) => {
   } catch { dl(toCSV(items), name + ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); }
 };
 
+// FIX: MYOB Raw Data corruption fix — writes MULTIPLE sheets (one per
+// entry in `sheets`, e.g. "Invoices" + "Invoices_Lines") instead of
+// flattening everything into one sheet. The old single-sheet dlExcel()
+// above could silently write more than Excel's 16,384-column limit
+// whenever a record had a large array (e.g. an invoice with hundreds of
+// line items) — SheetJS doesn't throw on this, it just writes an
+// out-of-spec column range that Excel then refuses to open correctly.
+// Each sheet here has its own bounded, fixed column count (large arrays
+// were already moved server-side, see myobRawDataSheets.js), so this
+// cannot hit that limit.
+const dlExcelMultiSheet = (sheets, name) => {
+  if (!sheets?.length || !sheets.some(s => s.rows?.length)) return;
+  try {
+    const XLSX = window.XLSX;
+    if (!XLSX) throw new Error("no XLSX");
+    const wb = XLSX.utils.book_new();
+    const usedNames = new Set();
+    const uniqueSheetName = (base) => {
+      let n = String(base).replace(/[:\\/?*[\]]/g, "_").slice(0, 31) || "Sheet";
+      let i = 2;
+      while (usedNames.has(n)) {
+        const suffix = `_${i}`;
+        n = (String(base).slice(0, 31 - suffix.length) + suffix);
+        i++;
+      }
+      usedNames.add(n);
+      return n;
+    };
+
+    for (const { name: sheetName, rows } of sheets) {
+      if (!rows?.length) continue;
+      const rowsConverted = rows.map(convertDatesInRow);
+      const keys = Object.keys(rowsConverted[0]);
+      const ws = {};
+      const range = { s: { r: 0, c: 0 }, e: { r: rowsConverted.length, c: keys.length - 1 } };
+      keys.forEach((k, c) => { ws[XLSX.utils.encode_cell({ r: 0, c })] = { v: k, t: "s" }; });
+      rowsConverted.forEach((row, ri) => {
+        keys.forEach((k, c) => {
+          const v = row[k];
+          const addr = XLSX.utils.encode_cell({ r: ri + 1, c });
+          if (v === null || v === undefined || v === "") { ws[addr] = { v: "", t: "s" }; }
+          else if (DATE_COLS.has(k) && typeof v === "number" && v > 0) { ws[addr] = { v, t: "n", z: "dd/mm/yyyy" }; }
+          else if (typeof v === "object") { ws[addr] = { v: JSON.stringify(v), t: "s" }; }
+          else if (typeof v === "number") { ws[addr] = { v, t: "n" }; }
+          else { ws[addr] = { v: String(v), t: "s" }; }
+        });
+      });
+      ws["!ref"] = XLSX.utils.encode_range(range);
+      ws["!cols"] = keys.map(k => DATE_COLS.has(k) ? { wch: 14 } : { wch: Math.max(k.length + 2, 12) });
+      XLSX.utils.book_append_sheet(wb, ws, uniqueSheetName(sheetName));
+    }
+    XLSX.writeFile(wb, name + ".xlsx");
+  } catch {
+    // Fall back to the main (first) sheet as CSV rather than fail silently.
+    const main = sheets.find(s => s.rows?.length);
+    if (main) dl(toCSV(main.rows), name + ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  }
+};
+
 // ── Stat Card ─────────────────────────────────────────────────
 function StatCard({ icon: Icon, gradient, label, value, trend }) {
   return (
@@ -219,7 +278,7 @@ function TypeButton({ dt, isActive, selectedSub, onActivate }) {
 }
 
 // ── Download Button Group ─────────────────────────────────────
-function DownloadGroup({ label, count, items, filename, color = "#6366f1", asyncCacheKey, asyncOutputFormat }) {
+function DownloadGroup({ label, count, items, filename, color = "#6366f1", asyncCacheKey, asyncOutputFormat, sheets }) {
 
   // For async jobs: download from server cache instead of client-side items array.
   const handleAsyncDownload = async (format) => {
@@ -278,7 +337,7 @@ function DownloadGroup({ label, count, items, filename, color = "#6366f1", async
       <div className="grid grid-cols-3 gap-2">
         {[
           { label: "CSV",   fmt: "csv",   onClick: isAsync ? () => handleAsyncDownload("csv")   : () => dlCSV(items, filename),   bg: "white",        border: "#e2e8f0",    color: "#64748b" },
-          { label: "Excel", fmt: "excel", onClick: isAsync ? () => handleAsyncDownload("excel") : () => dlExcel(items, filename), bg: "#10b98112",    border: "#10b98130",  color: "#059669" },
+          { label: "Excel", fmt: "excel", onClick: isAsync ? () => handleAsyncDownload("excel") : (sheets?.length ? () => dlExcelMultiSheet(sheets, filename) : () => dlExcel(items, filename)), bg: "#10b98112",    border: "#10b98130",  color: "#059669" },
           { label: "JSON",  fmt: "json",  onClick: isAsync ? () => handleAsyncDownload("json")  : () => dlJSON(items, filename),  bg: color + "12",   border: color + "30", color: color },
         ].map(({ label: btnLabel, onClick, bg, border, color: btnColor }) => (
           <button key={btnLabel} onClick={onClick}
@@ -416,6 +475,7 @@ function ResultModal({ result, outputFormat, myobFname, convertedFname, activeTy
                 color="#0891b2"
                 asyncCacheKey={result._asyncCacheKey}
                 asyncOutputFormat={result._asyncOutputFormat}
+                sheets={result.rawDataSheets}
               />
             )}
           </div>
