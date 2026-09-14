@@ -125,6 +125,9 @@ export const flattenXeroBills = (bills, subType) => {
         "Total":
           bill.TotalAmount ?? "",
 
+        "SupplierInvoiceNumber": bill?.SupplierInvoiceNumber,
+        "SupplierUID": bill?.Supplier?.UID,
+
         // ✅ only item bills
         "InventoryItemCode": line.Item?.Number,
 
