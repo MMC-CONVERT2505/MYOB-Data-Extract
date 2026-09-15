@@ -67,7 +67,7 @@ export const flattenReckonInvoice = (invoices) => {
         "Item":              l.itemName,
         "Discount":          l.DiscountPercent ?? "",
         "Job Name":          l?.Job?.Name,
-        "Job Number":        line.Job?.Number,
+        "Job Number":        l.Job?.Number,
         "Description":       l.description,
         "Account No.":       l.accountNo,
         "No. of Unit":       l.qty,

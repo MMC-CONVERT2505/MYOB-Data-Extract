@@ -201,8 +201,8 @@ export const flattenMYOBInvoiceService = (invoices, businessName) => {
           inv.Terms?.Discount ?? "",
 
         "classification":
-          line.Job?.Name ||
-          line.Category?.Name ||
+          line?.Job?.Name ||
+          line?.Category?.Name ||
           "",
 
         // ✅ fixed item price
@@ -210,10 +210,10 @@ export const flattenMYOBInvoiceService = (invoices, businessName) => {
           unitAmount,
 
         "Account":
-          line.Account?.DisplayID || "",
+          line?.Account?.DisplayID || "",
 
         "Account Name":
-          line.Account?.Name || "",
+          line?.Account?.Name || "",
 
         // ✅ MOVE HERE FOR TESTING
         "Item Name":
