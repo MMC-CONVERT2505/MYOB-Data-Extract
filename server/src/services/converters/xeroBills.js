@@ -4,6 +4,8 @@ import { cleanNone, fmtDate } from "../helpers.js";
 // Same structure as Xero Invoices but for purchase bills (ACCPAY).
 export const flattenXeroBills = (bills, subType) => {
 
+  console.log("bills", JSON.stringify(bills, null, 2))
+
   const rows = [];
 
   for (const bill of bills) {
@@ -39,6 +41,8 @@ export const flattenXeroBills = (bills, subType) => {
       // ❌ skip empty rows
       if (!lineAmount) continue;
 
+    
+
       // ✅ item/service detection
       const isService =
         !line.Item?.Number &&
@@ -54,18 +58,18 @@ export const flattenXeroBills = (bills, subType) => {
       const quantity = isService
         ? 1
         : (
-            line.Quantity ??
-            line.UnitCount ??
-            line.BillQuantity ??
-            1
-          );
+          line.Quantity ??
+          line.UnitCount ??
+          line.BillQuantity ??
+          1
+        );
 
       // ✅ unit amount logic
       const unitAmount = isService
         ? lineAmount
         : Number(
-            line.UnitPrice ?? 0
-          );
+          line.UnitPrice ?? 0
+        );
 
       // ✅ tax code
       const taxCode =
@@ -106,86 +110,77 @@ export const flattenXeroBills = (bills, subType) => {
       }
 
       rows.push({
+        "*ContactName": contactName,
 
-        "*ContactName":
-          contactName,
+        "*InvoiceNumber": bill.Number || "",
 
-        "*InvoiceNumber":
-          bill.Number ||
-          "",
+        "*InvoiceDate": fmtDate(bill.Date),
 
-        "*InvoiceDate":
-          fmtDate(bill.Date),
-
-        "*DueDate":
-          fmtDate(
-            bill.Terms?.DueDate
-          ),
-
-        "Total":
-          bill.TotalAmount ?? "",
-
-        // ✅ only item bills
-        "InventoryItemCode": line.Item?.Number,
-
-        "Description":
-          line.Description || "",
-
-        // ✅ fixed qty
-        "*Quantity":
-          quantity,
-
-        // ✅ fixed unit amount
-        "*UnitAmount":
-          unitAmount,
-
-        "*AccountCode":
-          line.Account?.DisplayID || "",
-
-        "*TaxType":
-          taxCode,
-
-        // ✅ fixed tax amount
-        "TaxAmount":
-          Number(
-            lineTaxAmt
-          ),
-
-        // ✅ fixed line amount
-        "Line Amount":
-          lineAmount,
-
-        "TrackingName1":
-          "",
-
-        "TrackingOption1":
-          "",
-
-        "TrackingName2":
-          "",
-
-        "TrackingOption2":
-          "",
-
-        "Currency":
-          bill.ForeignCurrency?.Code || "AUD",
-
-        "LineAmountType":
-          bill.IsTaxInclusive
-            ? "Inclusive"
-            : "Exclusive",
-
-        // ✅ NEW FIELDS
+        "*DueDate": fmtDate(bill.Terms?.DueDate),
 
         "PO Number":
           bill.CustomerPurchaseOrderNumber ||
           bill.PurchaseOrderNumber ||
           bill.Order?.Number ||
           "",
+        
+        
+        "SupplierInvoiceNumber": bill?.SupplierInvoiceNumber,
+        "SupplierUID": bill?.Supplier?.UID,
 
-        "Exchange Rate":
-          bill.CurrencyExchangeRate ?? 1,
+        "Currency": bill.ForeignCurrency?.Code || "AUD",
 
+        "Exchange Rate": bill.CurrencyExchangeRate ?? 1,
+
+        "LineAmountType": bill.IsTaxInclusive
+          ? "Inclusive"
+          : "Exclusive",
+
+        "Total": bill.TotalAmount ?? "",
+
+        // Item details
+        "InventoryItemCode": line.Item?.Number,
+
+        "Description": line.Description || "",
+
+        "*Quantity": quantity,
+
+        "*UnitAmount": unitAmount,
+
+        "Line Amount": lineAmount,
+
+        "*AccountCode": line.Account?.DisplayID || "",
+
+        "Discount":
+          line?.DiscountPercent,
+
+        "Job Name":
+          line?.Job?.Name,
+
+        "Job Number":
+          line?.Job?.Number,
+
+        "*TaxType": taxCode,
+
+        "TaxAmount": Number(lineTaxAmt),
+
+        // Freight details
+        "Freight": bill.Freight,
+
+        "FreightTaxCode": bill?.FreightTaxCode?.Code,
+
+        "FreightForeign": bill?.FreightForeign,
+
+        // Tracking
+        "TrackingName1": "",
+
+        "TrackingOption1": "",
+
+        "TrackingName2": "",
+
+        "TrackingOption2": "",
+
+        // Unique ID
         "UID": bill?.UID,
       });
     }
@@ -196,14 +191,15 @@ export const flattenXeroBills = (bills, subType) => {
 
 // ── Xero Bill Payments ────────────────────────────────────────
 export const flattenXeroBillPayments = (payments) => {
+  console.log("payment", JSON.stringify(payments, null, 2))
   const rows = [];
 
   for (const p of payments) {
     const lines = p.Lines?.length
       ? p.Lines
       : p.Bills?.length
-      ? p.Bills
-      : [{}];
+        ? p.Bills
+        : [{}];
 
     // ✅ ONLY DisplayID
     const bankAccount = p.Account?.DisplayID || "";
@@ -244,7 +240,8 @@ export const flattenXeroBillPayments = (payments) => {
 
         "CurrencyRate": p.CurrencyExchangeRate ?? 1,
 
-        "UID": p?.UID,
+        "Bill UID":
+          line?.Purchase?.UID || "",
       });
     }
   }
@@ -259,16 +256,16 @@ export const flattenXEROCreditNote = (creditNotes) => {
     const lines = cn.Lines?.length ? cn.Lines : [{}];
     for (const line of lines) {
       rows.push({
-        "UID":                cn.UID || "",
-        "CreditFromInvoice":  cn.CreditFromInvoice?.Number || "",
-        "Customer":           cleanNone(cn.Customer?.Name || cn.Customer?.CompanyName || cn.Customer?.DisplayID),
-        "Number":             cn.Number || "",
-        "Date":               fmtDate(cn.Date),
-        "CreditAmount":       cn.Amount ?? cn.CreditAmount ?? "",
-        "Memo":               cn.Memo || "",
-        "Invoice Id":         line.Sale?.Number || line.Invoice?.Number || "",
-        "AmountApplied":      line.AmountApplied ?? "",
-        "ForeignCurrency":    cn.ForeignCurrency?.Code || "",
+        "UID": cn.UID || "",
+        "CreditFromInvoice": cn.CreditFromInvoice?.Number || "",
+        "Customer": cleanNone(cn.Customer?.Name || cn.Customer?.CompanyName || cn.Customer?.DisplayID),
+        "Number": cn.Number || "",
+        "Date": fmtDate(cn.Date),
+        "CreditAmount": cn.Amount ?? cn.CreditAmount ?? "",
+        "Memo": cn.Memo || "",
+        "Invoice Id": line.Sale?.Number || line.Invoice?.Number || "",
+        "AmountApplied": line.AmountApplied ?? "",
+        "ForeignCurrency": cn.ForeignCurrency?.Code || "",
       });
     }
   }
@@ -278,25 +275,49 @@ export const flattenXEROCreditNote = (creditNotes) => {
 // ── Xero Vendor Credits ───────────────────────────────────────
 // Endpoint: /Purchase/DebitSettlement
 // NOTE: settlement record — one row per Bill this credit was applied to.
+// export const flattenXeroVendorCredit = (items) => {
+//   const rows = [];
+//   for (const vc of items) {
+//     const lines = vc.Lines?.length ? vc.Lines : [{}];
+//     const contactName = cleanNone(
+//       vc.Supplier?.CompanyName || vc.Supplier?.Name || vc.Supplier?.DisplayID
+//     );
+
+//     for (const line of lines) {
+//       rows.push({
+//         "ContactName":    contactName,
+//         "Number": vc.Number || "",
+//         "Date":           fmtDate(vc.Date),
+//         "Debit From Bill No": vc?.DebitFromBill?.Number || "",
+//         "BillNumber":     line.Purchase?.Number || "",
+//         "AppliedAmount":  line.AmountApplied ?? "",
+//         "TotalAmount":    vc.Amount ?? vc.DebitAmount ?? "",
+//         "Reference":      vc.Memo || "",
+//         "CurrencyCode":   vc.ForeignCurrency?.Code || "AUD",
+//       });
+//     }
+//   }
+//   return rows;
+// };
+
 export const flattenXeroVendorCredit = (items) => {
+  // remove this line — was only for debugging, and had args backwards anyway
+  // console.log(JSON.stringify(items, 2, null))
   const rows = [];
   for (const vc of items) {
     const lines = vc.Lines?.length ? vc.Lines : [{}];
-    const contactName = cleanNone(
-      vc.Supplier?.CompanyName || vc.Supplier?.Name || vc.Supplier?.DisplayID
-    );
-
     for (const line of lines) {
       rows.push({
-        "ContactName":    contactName,
+        "UID": vc.UID || "",
+        "DebitFromBill_Credit": vc?.DebitFromBill?.Number || "",   // ✅ confirmed correct
+        "Supplier": cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName || vc.Supplier?.DisplayID),
         "Number": vc.Number || "",
-        "Date":           fmtDate(vc.Date),
-        "Debit From Bill No": vc?.DebitFromBill?.Number || "",
-        "BillNumber":     line.Purchase?.Number || "",
-        "AppliedAmount":  line.AmountApplied ?? "",
-        "TotalAmount":    vc.Amount ?? vc.DebitAmount ?? "",
-        "Reference":      vc.Memo || "",
-        "CurrencyCode":   vc.ForeignCurrency?.Code || "AUD",
+        "Date": fmtDate(vc.Date),
+        "DebitAmount": vc.Amount ?? vc.DebitAmount ?? "",   // ✅ correct — header total, one per credit
+        "Memo": vc.Memo || "",
+        "Bill Id": line.Purchase?.Number || "",        // ✅ correct — per-line bill reference
+        "AmountApplied": line.AmountApplied ?? "",           // ✅ correct — per-line applied amount
+        "ForeignCurrency": vc.ForeignCurrency?.Code || "",
       });
     }
   }
@@ -314,11 +335,11 @@ export const flattenXeroDebitRefund = (items) => {
 
     rows.push({
       "ContactName": contactName,
-      "Date":        fmtDate(dr.Date),
-      "BillNumber":  dr.Bill?.Number || "",
-      "Amount":      dr.Amount ?? "",
-      "Bank":        dr.Account?.DisplayID || "",
-      "Reference":   dr.Number || dr.Memo || "",
+      "Date": fmtDate(dr.Date),
+      "BillNumber": dr.Bill?.Number || "",
+      "Amount": dr.Amount ?? "",
+      "Bank": dr.Account?.DisplayID || "",
+      "Reference": dr.Number || dr.Memo || "",
       "CurrencyCode": dr.ForeignCurrency?.Code || "AUD",
     });
   }

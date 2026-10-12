@@ -238,6 +238,8 @@ export const flattenQBOInvoiceService = (invoices) => {
         "Product/Service Tax Amount":  line.TaxAmount ?? "",
         "Tax Amount":                  line.TaxAmount ?? inv.TotalTax ?? 0,
         "Product/Service Class":       line.Category?.Name || line.Job?.Name || "",
+        "Job Name" :                   line?.Job?.Name,
+        "Job No":                      line.Job?.Number,
         "Currency Code":               inv.ForeignCurrency?.Code || "AUD",
         "Exchange Rate":               inv.CurrencyExchangeRate ?? 1,
         "LineAmount":                      amount,
@@ -290,6 +292,7 @@ export const flattenQBOProfMiscInvoice = (invoices) => {
 
 // ── QBO Invoice Payments — 12 columns ────────────────────────
 export const flattenQBOInvoicePayments = (payments) => {
+  console.log(JSON.stringify(payments, null, 2))
   const rows = [];
   for (const p of payments) {
     const invoices = p.Invoices?.length ? p.Invoices : [{}];
@@ -315,7 +318,7 @@ export const flattenQBOInvoicePayments = (payments) => {
         "Memo":               safe(p.Memo),
         "Currency Code":      p.ForeignCurrency?.Code || "AUD",
         "Exchange Rate":      p.CurrencyExchangeRate ?? 1,
-        "UID": p?.UID
+        "UID": inv?.UID
       });
     }
   }

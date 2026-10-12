@@ -20,6 +20,7 @@ const OUTPUT_FORMATS = [
   { value: "qbo", label: "QuickBooks Online (QBO)" },
   { value: "xero", label: "Xero" },
   { value: "reckon", label: "MYOB" },
+  { value: "myobrawdata", label: "MYOB Raw Data" },
 ];
 
 const INVOICE_SUBTYPES = ["Item", "Service", "Professional", "TimeBilling", "Miscellaneous"];
@@ -358,6 +359,15 @@ function ResultModal({ result, outputFormat, myobFname, convertedFname, activeTy
                 items={result.converted.items}
                 filename={convertedFname}
                 color="#f97316"
+              />
+            )}
+            {outputFormat === "myobrawdata" && (
+              <DownloadGroup
+                label="MYOB Raw Data"
+                count={result.count}
+                items={result.items}
+                filename={myobFname}
+                color="#0891b2"
               />
             )}
           </div>
@@ -709,7 +719,7 @@ export default function Dashboard() {
                 {[
                   { name: "MYOB Business", connected: !!businessName, color: "#6366f1" },
                   // ...(outputFormat !== "raw" ? [{ name: outputFormat === "xero" ? "Xero" : "QuickBooks Online", connected: true, color: "#10b981" }] : []),
-                  ...(outputFormat !== "raw" ? [{ name: outputFormat === "xero" ? "Xero" : outputFormat === "reckon" ? "MYOB" : "QuickBooks Online", connected: true, color: "#10b981" }] : []),
+                  ...(outputFormat !== "raw" && outputFormat !== "myobrawdata" ? [{ name: outputFormat === "xero" ? "Xero" : outputFormat === "reckon" ? "MYOB" : "QuickBooks Online", connected: true, color: "#10b981" }] : []),
                 ].map(conn => (
                   <div key={conn.name}
                     className="flex items-center justify-between px-4 py-3 rounded-xl border transition-all"

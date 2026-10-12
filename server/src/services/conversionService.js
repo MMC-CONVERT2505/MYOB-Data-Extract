@@ -18,7 +18,7 @@ import {
 
 import {
   flattenReckonBills,
-  flattenReckonSupplierReturn,
+  flattenReckonVendorCredit,
   flattenReckonSupplierPayment,
 } from "./converters/reckonBills.js";
 
@@ -48,7 +48,7 @@ import {
   flattenQBOBillItems,
   flattenQBOBillPayments,
   flattenQBOBillService,
-   flattenQBOVendorCredit,
+  flattenQBOVendorCredit,
   flattenQBODebitRefund,
   flattenQBOCreditNotes,
 } from "./converters/qboBills.js";
@@ -84,7 +84,7 @@ import {
   flattenMYOBQuote,
   flattenMYOBCreditRefund,
   flattenMYOBInvoiceTimeBilling,
-   flattenMYOBVendorCredit,
+  flattenMyobVendorCredit,
   flattenMYOBDebitRefund,
 } from "./converters/myobRaw.js";
 
@@ -103,6 +103,8 @@ import {
   flattenMYOBJobs,
   flattenMYOBTaxCodes,
 } from "./converters/referenceRaw.js";
+
+import { flattenMYOBRawData } from "./converters/myobRawData.js";
 
 import {
   flattenQBOItems,
@@ -250,6 +252,14 @@ export const convertToXero = (items, dataType, subType = null, businessName = ""
 };
 
 
+// ── MYOB Raw DATA Converter ─────────────────────────────────────
+// True raw flatten: every field from the MYOB API response, no
+// dataType/subType-specific field selection, nothing dropped.
+export const convertToMYOBRawData = (items) => {
+  if (!items?.length) return [];
+  return flattenMYOBRawData(items);
+};
+
 // ── MYOB Raw Converter ────────────────────────────────────────────────────────
 export const convertToMYOBRaw = (items, dataType, subType = null, businessName = "") => {
   if (!items?.length) return [];
@@ -272,7 +282,7 @@ export const convertToMYOBRaw = (items, dataType, subType = null, businessName =
       return flattenMYOBCreditRefund(items);
 
     case "vendorCredits":
-      return flattenMYOBVendorCredit(items);
+      return flattenMyobVendorCredit(items);
 
     case "debitRefunds":
       return flattenMYOBDebitRefund(items);
@@ -331,7 +341,7 @@ export const convertToReckon = (items, dataType, subType = null, businessName = 
     case "creditNotes":
       return flattenMYOBCreditNote(items);
     case "vendorCredits":
-      return flattenReckonSupplierReturn(items);
+      return flattenReckonVendorCredit(items);
     case "invoicePayments":
       return flattenReckonCustomerPayment(items);
     case "billPayments":

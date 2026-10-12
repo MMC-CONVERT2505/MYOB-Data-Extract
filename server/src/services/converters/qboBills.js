@@ -484,6 +484,7 @@ export const flattenQBOBillService = (bills) => {
 
 // ── QBO Bill Payments — 10 columns ───────────────────────────
 export const flattenQBOBillPayments = (payments) => {
+  console.log(JSON.stringify(payments, null, 2))
   const rows = [];
   for (const p of payments) {
     const lines = p.Lines?.length ? p.Lines : p.Bills?.length ? p.Bills : [{}];
@@ -507,7 +508,7 @@ export const flattenQBOBillPayments = (payments) => {
         "Currency Code": p.ForeignCurrency?.Code || "AUD",
         "Exchange Rate": p.CurrencyExchangeRate ?? 1,
         "Print Status": safe(p.DeliveryStatus),
-        "UID": p?.UID
+        "UID": line?.Purchase?.UID
       });
     }
   }
@@ -516,12 +517,13 @@ export const flattenQBOBillPayments = (payments) => {
 
 // ── QBO Credit Notes — 19 columns ────────────────────────────
 export const flattenQBOCreditNotes = (creditNotes) => {
+
   const rows = [];
   for (const cn of creditNotes) {
     const lines = cn.Lines?.length ? cn.Lines : [{}];
     for (const line of lines) {
       rows.push({
-        "UID":                cn.UID || "",
+        "UID":                 line.Sale?.UID|| "",
         "CreditFromInvoice":  cn.CreditFromInvoice?.Number || "",
         "Customer":           cleanNone(cn.Customer?.Name || cn.Customer?.CompanyName || cn.Customer?.DisplayID),
         "Number":             cn.Number || "",
@@ -541,6 +543,8 @@ export const flattenQBOCreditNotes = (creditNotes) => {
 // Endpoint: /Purchase/DebitSettlement
 // NOTE: settlement record — one row per Bill this credit was applied to.
 export const flattenQBOVendorCredit = (items) => {
+
+  console.log(JSON.stringify(items, null, 2))
   // remove this line — was only for debugging, and had args backwards anyway
   // console.log(JSON.stringify(items, 2, null))
   const rows = [];
@@ -548,7 +552,7 @@ export const flattenQBOVendorCredit = (items) => {
     const lines = vc.Lines?.length ? vc.Lines : [{}];
     for (const line of lines) {
       rows.push({
-        "UID":                 vc.UID || "",
+        "UID":                  line.Purchase?.UID || "",
         "DebitFromBill_Credit": vc?.DebitFromBill?.Number || "",   // ✅ confirmed correct
         "Supplier":            cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName || vc.Supplier?.DisplayID),
         "Number":              vc.Number || "",

@@ -89,11 +89,11 @@ export const flattenXeroInvoices = (invoices) => {
       const quantity = isService
         ? 1
         : (
-            line.Quantity ??
-            line.ShipQuantity ??
-            line.UnitCount ??
-            1
-          );
+          line.Quantity ??
+          line.ShipQuantity ??
+          line.UnitCount ??
+          1
+        );
 
       // ✅ tax code
       const taxCode =
@@ -141,8 +141,8 @@ export const flattenXeroInvoices = (invoices) => {
       const unitAmount = isService
         ? lineAmount
         : Number(
-            line.UnitPrice ?? 0
-          );
+          line.UnitPrice ?? 0
+        );
 
       // ✅ item code + name concat
       const itemName =
@@ -184,6 +184,12 @@ export const flattenXeroInvoices = (invoices) => {
 
         "*Description":
           line.Description || "",
+
+        "Job Name":
+          line?.Job?.Name,
+
+        "Job Number":
+          line.Job?.Number,
 
         // ✅ fixed qty
         "*Quantity":
@@ -241,6 +247,15 @@ export const flattenXeroInvoices = (invoices) => {
           inv.Order?.Number ||
           "",
 
+        "Freight":
+          inv?.Freight || "",
+
+        "FreightForeign":
+          inv.FreightForeign || "",
+
+        "FreightTaxCode":
+          inv?.FreightTaxCode?.Code,
+
         "Exchange Rate":
           inv.CurrencyExchangeRate ?? 1,
 
@@ -280,6 +295,7 @@ export const flattenXeroInvoices = (invoices) => {
 
 
 export const flattenXeroInvoicePayments = (payments) => {
+
   const rows = [];
 
   for (const p of payments) {
@@ -325,7 +341,7 @@ export const flattenXeroInvoicePayments = (payments) => {
           "",
 
         "CurrencyRate": p.CurrencyExchangeRate ?? 1,
-        "UID" : p?.UID,
+        "UID": inv?.UID,
       });
     }
   }
@@ -347,11 +363,11 @@ export const flattenXeroCreditRefund = (items) => {
 
     rows.push({
       "ContactName": contactName,
-      "Date":        fmtDate(cr.Date),
-      "Invoice No":  cr.Invoice?.Number || "",
-      "Amount":      cr.Amount ?? "",
-      "Bank":        cr.Account?.DisplayID || "",
-      "Reference":   cr.Number || cr.Memo || "",
+      "Date": fmtDate(cr.Date),
+      "Invoice No": cr.Invoice?.Number || "",
+      "Amount": cr.Amount ?? "",
+      "Bank": cr.Account?.DisplayID || "",
+      "Reference": cr.Number || cr.Memo || "",
       "CurrencyRate": 1,
     });
   }

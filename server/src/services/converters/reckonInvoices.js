@@ -105,6 +105,30 @@ export const flattenMYOBCreditNote = (creditNotes) => {
   return rows;
 };
 
+// export const flattenReckonVendorCredit = (items) => {
+//   // remove this line — was only for debugging, and had args backwards anyway
+//   // console.log(JSON.stringify(items, 2, null))
+//   const rows = [];
+//   for (const vc of items) {
+//     const lines = vc.Lines?.length ? vc.Lines : [{}];
+//     for (const line of lines) {
+//       rows.push({
+//         "UID":                 vc.UID || "",
+//         "DebitFromBill_Credit": vc?.DebitFromBill?.Number || "",   // ✅ confirmed correct
+//         "Supplier":            cleanNone(vc.Supplier?.Name || vc.Supplier?.CompanyName || vc.Supplier?.DisplayID),
+//         "Number":              vc.Number || "",
+//         "Date":                fmtDate(vc.Date),
+//         "DebitAmount":         vc.Amount ?? vc.DebitAmount ?? "",   // ✅ correct — header total, one per credit
+//         "Memo":                vc.Memo || "",
+//         "Bill Id":             line.Purchase?.Number || "",        // ✅ correct — per-line bill reference
+//         "AmountApplied":       line.AmountApplied ?? "",           // ✅ correct — per-line applied amount
+//         "ForeignCurrency":     vc.ForeignCurrency?.Code || "",
+//       });
+//     }
+//   }
+//   return rows;
+// };
+
 // ── 3. Invoice Payments → "Customer payment" sheet ───────────────
 // Endpoint: /Sale/Invoice/Payment
 export const flattenReckonCustomerPayment = (payments) => {
@@ -120,7 +144,7 @@ export const flattenReckonCustomerPayment = (payments) => {
         "Description of transaction": p.Memo || "",
         "Invoice number":             inv.Number || "",
         "Amount received":            inv.AmountApplied ?? p.AmountReceived ?? "",
-        "UID" :                       p?.UID,
+        "UID" :                       inv?.UID,
       });
     }
   }
