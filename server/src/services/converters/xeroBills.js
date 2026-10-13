@@ -142,8 +142,7 @@ export const flattenXeroBills = (bills, subType) => {
         "*UnitAmount":
           unitAmount,
 
-        "*AccountCode":
-          line.Account?.DisplayID || "",
+        "*AccountCode": (line.Account?.DisplayID || "").replace(/-/g, ""),
 
         "Discount": 
         line?.DiscountPercent,
