@@ -6,6 +6,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "test": "node --experimental-test-module-mocks --test-reporter=spec test/company-isolation.test.js",
     "dev": "--watch src/server.js"
   },
   "dependencies": {

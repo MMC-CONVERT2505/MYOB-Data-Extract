@@ -36,6 +36,10 @@ const summaryJobSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     businessId: { type: String, required: true },
+    // Company identity is frozen on the job at creation time; the worker
+    // and the download endpoint use THESE values, never the live session.
+    businessName: { type: String, default: "" },
+    businessUri:  { type: String, default: null },
 
     // Request params (enough to reconstruct the request / show in a job list).
     startDate: { type: String, default: null },

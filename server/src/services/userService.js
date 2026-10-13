@@ -8,10 +8,7 @@ export const upsertUser = async ({
   accessToken,
   refreshToken,
   tokenExpiresAt,
-  businessId   = null,
-  businessName = null,
-  businessUri  = null,
-  companyFiles = [],
+  companyFiles = null, // null = unknown (leave stored list), [] = MYOB returned none
 }) => {
   // If MYOB gives us a stable user ID, use it as the unique key.
   // Otherwise fall back to refreshToken (stable across access token refreshes).
@@ -26,10 +23,9 @@ export const upsertUser = async ({
       tokenExpiresAt,
       lastLoginAt: new Date(),
       ...(myobUserId   && { myobUserId }),
-      ...(businessId   && { businessId }),
-      ...(businessName && { businessName }),
-      ...(businessUri  && { businessUri }),
-      ...(companyFiles.length && { companyFiles }),
+      // NOTE: the selected company is deliberately NOT written here. It is
+      // per browser session (req.session.company), not per MYOB account.
+      ...(Array.isArray(companyFiles) && { companyFiles }),
     },
   };
 

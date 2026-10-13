@@ -290,6 +290,8 @@
  * asyncExtractionService.js
  */
 
+import { verifyJobCompany, companyTag } from "./companyContext.js";
+import { findUserById } from "./userService.js";
 import ExtractionJob from "../models/ExtractionJob.model.js";
 import ExtractionHistory from "../models/ExtractionHistory.model.js";
 import ExtractionCache from "../models/ExtractionCache.model.js";
@@ -469,6 +471,12 @@ export async function runExtractionJob(job, dbUser) {
     await ExtractionJob.findByIdAndUpdate(jobId, { $set: { status: "pending" } });
 
     const { userId, businessId, dataType, subType, outputFormat, startDate, endDate } = job;
+
+    // ── Company-file safety check (stop rather than risk another company) ──
+    dbUser = verifyJobCompany(job, dbUser, await findUserById(userId));
+    console.log(
+      `🏢 Job ${jobId}: user=${userId} connection=${dbUser._id} ${companyTag(dbUser)} dataType=${dataType}/${subType || "all"}`
+    );
 
     const isReference = REFERENCE_DATA_TYPES.has(dataType);
     const start = isReference ? null : startDate;

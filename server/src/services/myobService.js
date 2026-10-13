@@ -164,7 +164,8 @@
 import axios from "axios";
 import env from "../config/env.js";
 import { withRetry } from "./requestPool.js";
-import { updateUserTokens } from "./userService.js";
+import { updateUserTokens, findUserById } from "./userService.js";
+import { isValidCompanyId, companyTag } from "./companyContext.js";
 import { incrementApiCount } from "./apiUsageService.js";
 
 // ── Exchange authorization code for tokens ───────────────────
@@ -245,8 +246,22 @@ async function refreshTokenOnce(dbUser, userId) {
 
   const refreshPromise = (async () => {
     try {
+      // The caller's dbUser can be a stale snapshot (long-running job, or a
+      // request that loaded the user before another request refreshed).
+      // MYOB rotates the refresh token on every use, so always work from
+      // the latest stored tokens, and skip the refresh if someone else
+      // already did it.
+      const latest = await findUserById(userId);
+      if (latest?.accessToken && latest.tokenExpiresAt - 2 * 60 * 1000 > Date.now()) {
+        dbUser.accessToken    = latest.accessToken;
+        dbUser.refreshToken   = latest.refreshToken;
+        dbUser.tokenExpiresAt = latest.tokenExpiresAt;
+        return latest.accessToken;
+      }
+      const refreshTokenValue = latest?.refreshToken || dbUser.refreshToken;
+
       console.log("🔄 Access token expired — refreshing...");
-      const newTokens      = await refreshAccessToken(dbUser.refreshToken);
+      const newTokens      = await refreshAccessToken(refreshTokenValue);
       const tokenExpiresAt = Date.now() + (newTokens.expires_in || 1200) * 1000;
 
       await updateUserTokens(userId, {
@@ -285,6 +300,12 @@ export const myobRequest = async (dbUser, userId, method, endpoint, body = null,
     err.status = 400;
     throw err;
   }
+  // Never build a URL from an id that is not a real company file GUID.
+  if (!isValidCompanyId(dbUser.businessId)) {
+    const err = new Error("Invalid company file id.");
+    err.status = 400;
+    throw err;
+  }
 
   const apiBase = getApiBase(dbUser);
   const url     = `${apiBase}/${dbUser.businessId}${endpoint}`;
@@ -314,6 +335,9 @@ export const myobRequest = async (dbUser, userId, method, endpoint, body = null,
 
     return data;
   } catch (axiosErr) {
+    if (process.env.MYOB_DEBUG_COMPANY === "1") {
+      console.error(`   ↳ request was for ${companyTag(dbUser)} user=${userId}`);
+    }
     const status  = axiosErr.response?.status || 500;
     const message =
       axiosErr.response?.data?.Message ||

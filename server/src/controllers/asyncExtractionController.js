@@ -15,6 +15,7 @@
 
 import ExtractionJob from "../models/ExtractionJob.model.js";
 import { runExtractionJob } from "../services/asyncExtractionService.js";
+import { isValidCompanyId, companyTag } from "../services/companyContext.js";
 
 const REFERENCE_DATA_TYPES = new Set([
   "items", "customers", "suppliers", "accounts", "jobs", "taxcodes",
@@ -29,6 +30,14 @@ export const startAsyncExtraction = async (req, res, next) => {
       dataType, subType, outputFormat = "raw",
       startDate, endDate,
     } = req.body;
+
+    // ── Company must be explicitly selected for THIS session ──
+    if (!dbUser.businessId || !isValidCompanyId(dbUser.businessId)) {
+      return res.status(400).json({
+        error: "No company file selected. Select a company file before extracting.",
+        code: "NO_COMPANY_SELECTED",
+      });
+    }
 
     // ── Validation ────────────────────────────────────────────
     if (!dataType) {
@@ -48,6 +57,7 @@ export const startAsyncExtraction = async (req, res, next) => {
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
     const duplicate = await ExtractionJob.findOne({
       userId,
+      businessId: dbUser.businessId, // a running job for another company must not block / be confused with this one
       dataType,
       subType: subType || null,
       status: { $in: ["queued", "pending"] },
@@ -64,6 +74,8 @@ export const startAsyncExtraction = async (req, res, next) => {
     const job = await ExtractionJob.create({
       userId,
       businessId: dbUser.businessId,
+      businessName: dbUser.businessName || "",
+      businessUri: dbUser.businessUri || null,
       dataType,
       subType: subType || null,
       outputFormat,
@@ -74,7 +86,7 @@ export const startAsyncExtraction = async (req, res, next) => {
     });
 
     const jobId = job._id.toString();
-    console.log(`📋 Async job created: ${jobId} (${dataType}/${subType || "all"}, user=${userId})`);
+    console.log(`📋 Async job created: ${jobId} (${dataType}/${subType || "all"}, user=${userId}, ${companyTag(dbUser)})`);
 
     // ── Fire-and-forget (requirement 1) ───────────────────────
     // We do NOT await this — the HTTP response returns immediately
@@ -117,6 +129,8 @@ export const getJobStatus = async (req, res, next) => {
       status: job.status,
       progress: job.progress,
       errorMessage: job.errorMessage ?? null,
+      businessId: job.businessId,
+      businessName: job.businessName || "",
       resultCacheKey: job.status === "successful" ? job.resultCacheKey : null,
       dataType: job.dataType,
       subType: job.subType,
@@ -145,6 +159,8 @@ export const listJobs = async (req, res, next) => {
         jobId: j._id.toString(),
         dataType: j.dataType,
         subType: j.subType,
+        businessId: j.businessId,
+        businessName: j.businessName || "",
         status: j.status,
         progress: j.progress,
         createdAt: j.createdAt,

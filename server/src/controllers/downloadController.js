@@ -128,6 +128,8 @@ export const downloadExcel = async (req, res, next) => {
     }
 
   let rawItems;
+  let jobBusinessId = null;
+  let jobBusinessName = null;
   let cacheStart, cacheEnd; // used later for the output filename — must be set on both branches
 
     if (jobId) {
@@ -160,9 +162,21 @@ export const downloadExcel = async (req, res, next) => {
 
       console.log(`🔍 Cache lookup (via jobId=${jobId}): dataType=${job.dataType} subType=${job.subType} start=${jobStart} end=${jobEnd}`);
 
+      // FIX: use the company the JOB was created for, not whatever company
+      // the session has selected right now. Previously, extracting A,
+      // switching to B and then downloading looked A's job up under B's id
+      // (and named the workbook after B).
+      jobBusinessId = job.businessId;
+      jobBusinessName = job.businessName || "";
+      if (!jobBusinessName) {
+        const hist = await ExtractionHistory.findOne({ userId, businessId: job.businessId }).sort({ createdAt: -1 }).lean();
+        jobBusinessName = hist?.businessName || "";
+      }
+      console.log(`⬇️ Download via job ${jobId}: user=${userId} company=${jobBusinessName} companyFileId=${jobBusinessId} (session company: ${req.dbUser.businessId || "none"})`);
+
       rawItems = await getCachedExtraction(
         userId,
-        req.dbUser.businessId,
+        jobBusinessId,
         job.dataType,
         job.subType || null,
         jobStart,
@@ -170,6 +184,9 @@ export const downloadExcel = async (req, res, next) => {
       );
     } else {
       // Legacy path — sync extraction, frontend supplies params directly.
+      if (!req.dbUser.businessId) {
+        return res.status(400).json({ error: "No company file selected.", code: "NO_COMPANY_SELECTED" });
+      }
       cacheStart = startDate || "reference";
       cacheEnd   = endDate   || "reference";
 
@@ -191,7 +208,7 @@ export const downloadExcel = async (req, res, next) => {
         error: "Cache expired or not found. Please extract the data again.",
       });
     }
-    const businessName = req.dbUser.businessName || "";
+    const businessName = (jobBusinessId ? jobBusinessName : req.dbUser.businessName) || "";
 
     // FIX: "MYOB Raw Data" now goes through a separate multi-sheet path.
     // The old single flat sheet (convertToMYOBRawData) could exceed

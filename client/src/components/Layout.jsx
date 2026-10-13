@@ -5,7 +5,7 @@ import {
   Search, X, History, Settings, Building2,
   Sparkles, Zap, AlertTriangle, Activity, PieChart
 } from "lucide-react";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef, Fragment } from "react";
 import axios from "axios";
 import { usageAPI } from "../services/api";
 
@@ -135,11 +135,29 @@ export default function Layout({ children }) {
     finally { setLoading(false); }
   };
 
+  // No company selected for this session (fresh login on an account with
+  // several company files): ask explicitly instead of guessing one.
+  const autoPrompted = useRef(false);
+  useEffect(() => {
+    if (!businessId && !autoPrompted.current) {
+      autoPrompted.current = true;
+      loadAndSwitch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessId]);
+
   const selectFile = async (file) => {
-    await axios.post("/auth/select-company",
-      { businessId: file.Id, businessName: file.Name, businessUri: file.Uri || null },
-      { withCredentials: true }
-    );
+    try {
+      // Only the id is sent; the server resolves name/uri from the
+      // company list MYOB returned for this account.
+      await axios.post("/auth/select-company",
+        { businessId: file.Id },
+        { withCredentials: true }
+      );
+    } catch (e) {
+      alert("Could not select company: " + (e.response?.data?.error || e.message));
+      return;
+    }
     setShowSwitch(false);
     setSearch("");
     await refetch();
@@ -199,7 +217,7 @@ export default function Layout({ children }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-slate-700 truncate">
-                {loading ? "Loading..." : (businessName?.slice(0, 18) + (businessName?.length > 18 ? "…" : "")) || "No company"}
+                {loading ? "Loading..." : businessName ? businessName.slice(0, 18) + (businessName.length > 18 ? "…" : "") : "Select Company"}
               </p>
               <p className="text-xs text-slate-400">Click to switch</p>
             </div>
@@ -282,7 +300,9 @@ export default function Layout({ children }) {
           </div>
         )}
 
-        {children}
+        {/* key = active company: switching company remounts the page so no
+            data / job state from the previous company can remain on screen */}
+        <Fragment key={businessId || "no-company"}>{children}</Fragment>
       </main>
 
       {/* ── Company Switch Modal ── */}

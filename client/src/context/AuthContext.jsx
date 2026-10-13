@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
+import { setActiveCompanyId } from "../services/companyGuard";
 
 const AuthContext = createContext(null);
 
@@ -20,8 +21,10 @@ export function AuthProvider({ children }) {
   const checkAuthStatus = async () => {
     try {
       const res = await axios.get("/auth/status", { withCredentials: true });
+      setActiveCompanyId(res.data?.authenticated ? res.data.businessId : null);
       setAuth({ loading: false, ...res.data });
     } catch {
+      setActiveCompanyId(null);
       setAuth({ loading: false, authenticated: false });
     }
   };
@@ -32,6 +35,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     await axios.get("/auth/logout", { withCredentials: true });
+    setActiveCompanyId(null);
     setAuth({ loading: false, authenticated: false, businessName: null });
     window.location.href = "/myob-app/";
   };

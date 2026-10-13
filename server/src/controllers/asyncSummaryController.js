@@ -15,6 +15,7 @@
 
 import SummaryJob from "../models/SummaryJob.model.js";
 import { runSummaryJob } from "../services/asyncSummaryService.js";
+import { isValidCompanyId, companyTag } from "../services/companyContext.js";
 
 // ── POST /api/summary/async ─────────────────────────────────────
 export const startAsyncSummary = async (req, res, next) => {
@@ -23,10 +24,18 @@ export const startAsyncSummary = async (req, res, next) => {
     const dbUser = req.dbUser;
     const { startDate, endDate, accountingBasis, inception } = req.body || {};
 
-    // ── One-active-job-per-user guard, same pattern as extraction ──
+    if (!dbUser.businessId || !isValidCompanyId(dbUser.businessId)) {
+      return res.status(400).json({
+        error: "No company file selected. Select a company file before running the summary.",
+        code: "NO_COMPANY_SELECTED",
+      });
+    }
+
+    // ── One-active-job-per-user(+company) guard, same pattern as extraction ──
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
     const duplicate = await SummaryJob.findOne({
       userId,
+      businessId: dbUser.businessId,
       status: { $in: ["queued", "pending"] },
       updatedAt: { $gt: twoHoursAgo },
     });
@@ -40,6 +49,8 @@ export const startAsyncSummary = async (req, res, next) => {
     const job = await SummaryJob.create({
       userId,
       businessId: dbUser.businessId,
+      businessName: dbUser.businessName || "",
+      businessUri: dbUser.businessUri || null,
       startDate: startDate || null,
       endDate: endDate || null,
       accountingBasis: accountingBasis || "Accrual",
@@ -49,7 +60,7 @@ export const startAsyncSummary = async (req, res, next) => {
     });
 
     const jobId = job._id.toString();
-    console.log(`📋 Async summary job created: ${jobId} (user=${userId})`);
+    console.log(`📋 Async summary job created: ${jobId} (user=${userId}, ${companyTag(dbUser)})`);
 
     // Fire-and-forget — response returns immediately, work continues
     // in the background regardless of how long it takes.
@@ -87,6 +98,8 @@ export const getSummaryJobStatus = async (req, res, next) => {
       status: job.status,
       progress: job.progress,
       errorMessage: job.errorMessage ?? null,
+      businessId: job.businessId,
+      businessName: job.businessName || "",
       result: job.status === "successful" ? job.result : null,
       startDate: job.startDate,
       endDate: job.endDate,

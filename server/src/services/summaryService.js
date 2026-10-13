@@ -1,4 +1,5 @@
 // import { myobRequest } from "./myobService.js";
+import { relativeEndpointFromNextLink } from "./companyContext.js";
 
 // /**
 //  * Migration summary for the connected MYOB AccountRight company file
@@ -747,10 +748,8 @@ async function myobGetAllPaged(dbUser, userId, endpoint) {
     allItems = allItems.concat(pageItems);
 
     if (data?.NextPageLink && pageItems.length > 0) {
-      const u = new URL(data.NextPageLink);
-      const parts = u.pathname.split("/");
-      const bizIdx = parts.indexOf(dbUser.businessId);
-      pageUrl = "/" + parts.slice(bizIdx + 1).join("/") + u.search;
+      // Throws CompanyMismatchError if the link is not for THIS company file.
+      pageUrl = relativeEndpointFromNextLink(data.NextPageLink, dbUser.businessId);
     } else {
       pageUrl = null;
     }
@@ -764,6 +763,7 @@ async function safeGetAll(dbUser, userId, endpoint, label) {
   try {
     return await myobGetAllPaged(dbUser, userId, endpoint);
   } catch (e) {
+    if (e?.code === "COMPANY_MISMATCH") throw e; // never swallow a company mismatch
     console.log(`⚠️ summary: ${label || endpoint} failed — ${e.message}`);
     return [];
   }

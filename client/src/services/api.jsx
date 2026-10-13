@@ -1,6 +1,9 @@
 import axios from "axios";
 
+import { installCompanyGuard } from "./companyGuard";
+
 const api = axios.create({baseURL: "/myob-api", withCredentials: true });
+installCompanyGuard(api);
 
 // ── Sales Invoices ────────────────────────────────────────────
 export const invoiceAPI = {

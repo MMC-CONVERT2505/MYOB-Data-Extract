@@ -729,6 +729,15 @@ export const extractData = async (req, res, next) => {
     ]);
     const isReference = REFERENCE_DATA_TYPES.has(dataType);
 
+    // ── Company must be explicitly selected for this session ──
+    if (!dbUser.businessId) {
+      return res.status(400).json({
+        error: "No company file selected. Select a company file before extracting.",
+        code: "NO_COMPANY_SELECTED",
+      });
+    }
+    console.log(`🏢 Sync extract: user=${userId} company=${dbUser.businessName || "?"} companyFileId=${dbUser.businessId} dataType=${dataType}/${subType || "all"}`);
+
     // ── Validation ────────────────────────────────────────────
     if (!dataType) {
       return res.status(400).json({ error: "dataType is required" });

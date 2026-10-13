@@ -114,7 +114,7 @@ export const flattenXeroBills = (bills, subType) => {
           bill.Number ||
           "",
 
-        "*InvoiceDate":
+        "Invoice date":
           fmtDate(bill.Date),
 
         "*DueDate":

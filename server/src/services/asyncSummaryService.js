@@ -14,6 +14,8 @@
  * job bookkeeping (status + progress updates) around those calls.
  */
 
+import { verifyJobCompany, companyTag } from "./companyContext.js";
+import { findUserById } from "./userService.js";
 import SummaryJob from "../models/SummaryJob.model.js";
 import {
   getFileProfile,
@@ -42,6 +44,12 @@ export async function runSummaryJob(job, dbUser) {
     });
 
     const { startDate, endDate, accountingBasis, inception } = job;
+
+    // ── Company-file safety check (stop rather than risk another company) ──
+    dbUser = verifyJobCompany(job, dbUser, await findUserById(userId));
+    console.log(
+      `🏢 Summary job ${jobId}: user=${userId} connection=${dbUser._id} ${companyTag(dbUser)}`
+    );
 
     // ── Phase 1: file profile ──────────────────────────────────
     const { profile, _accounts } = await getFileProfile(dbUser, userId);
