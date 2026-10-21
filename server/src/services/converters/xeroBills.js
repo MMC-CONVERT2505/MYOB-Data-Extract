@@ -148,10 +148,10 @@ export const flattenXeroBills = (bills, subType) => {
         line?.DiscountPercent,
 
         "Job Name": 
-        line?.Job?.Name,
+        line?.Job?.Name ?? "",
 
         "Job Number" :
-         line.Job?.Number,
+         line.Job?.Number ?? "",
 
         "*TaxType":
           taxCode,
