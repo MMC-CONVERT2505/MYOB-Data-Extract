@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  deploy:
+  deploy-aws:
     runs-on: ubuntu-latest
 
     steps:
@@ -47,5 +47,45 @@ jobs:
 
             echo "Restarting MYOB application..."
             pm2 restart myob-extract
+
+            echo "Deployment Successful"
+
+  deploy-hostinger:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Hostinger Server
+        uses: appleboy/ssh-action@v1.0.3
+
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USERNAME }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_PORT }}
+
+          script: |
+            set -e
+
+            cd /var/www/MYOB-Data-Extract
+
+            echo "Fetching latest code..."
+            git fetch origin main
+
+            echo "Resetting local checkout to match origin/main exactly..."
+            git reset --hard origin/main
+
+            echo "Installing client dependencies..."
+            cd client
+            npm ci --legacy-peer-deps
+
+            echo "Building frontend..."
+            npm run build
+
+            echo "Installing server dependencies..."
+            cd ../server
+            npm ci
+
+            echo "Restarting MYOB backend..."
+            pm2 restart myob-backend --update-env
 
             echo "Deployment Successful"
