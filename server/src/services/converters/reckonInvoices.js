@@ -205,26 +205,57 @@ export const flattenReckonBankTransfer = (items) =>
 // ── 7. General Journal → "Journals" sheet ─────────────────────────
 // Endpoint: /GeneralLedger/GeneralJournal
 export const flattenReckonJournal = (items) => {
+  console.log("Reckon Journal:", JSON.stringify(items, null, 2));
+
   const rows = [];
-  for (const txn of items) {
+
+  for (const txn of items || []) {
     const lines = txn.Lines?.length ? txn.Lines : [{}];
+
     for (const line of lines) {
       const lineAmount = Number(line.Amount ?? line.Total ?? 0);
-      if (!lineAmount) continue;
+
+      if (!Number.isFinite(lineAmount) || lineAmount === 0) {
+        continue;
+      }
+
+      // Use IsCredit from the actual JSON
+      const isCredit = line.IsCredit === true;
+
       rows.push({
-        "Date":                       fmtDate(txn.DateOccurred),
-        "Reference number":           txn.DisplayID || "",
+        "Date": fmtDate(txn.DateOccurred),
+
+        "Reference number": txn.DisplayID || "",
+
         "Description of transaction": txn.Memo || "",
-        "Account":                    line.Account?.DisplayID || line.Account?.Name || "",
-        "Debit Amount":               lineAmount > 0 ? lineAmount : "",
-        "Credit Amount":              lineAmount < 0 ? Math.abs(lineAmount) : "",
-        "Quantity":                   "",
-        "Description":                line.Memo || "",
-        "Job":                        line.Job?.Name || "",
-        "Tax Code":                   line.TaxCode?.Code || "",
-        "Amounts are":                "Tax exclusive",
+
+        "Account":
+          line.Account?.DisplayID ||
+          line.Account?.Name ||
+          "",
+
+        "Debit Amount": isCredit
+          ? ""
+          : Math.abs(lineAmount),
+
+        "Credit Amount": isCredit
+          ? Math.abs(lineAmount)
+          : "",
+
+        "Quantity": "",
+
+        "Description": line.Memo || "",
+
+        "Job": line.Job?.Name || "",
+
+        "Tax Code": line.TaxCode?.Code || "",
+
+        "Amounts are": txn.IsTaxInclusive === true
+          ? "Tax inclusive"
+          : "Tax exclusive",
       });
     }
   }
+
   return rows;
 };

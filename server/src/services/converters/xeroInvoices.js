@@ -165,10 +165,10 @@ export const flattenXeroInvoices = (invoices) => {
         "Reference":
           inv.CustomerPurchaseOrderNumber || "",
 
-        "Invoice Date":
+        "Invoice date":
           fmtDate(inv.Date),
 
-        "Due Date":
+        "Due date":
           fmtDate(
             inv.Terms?.DueDate
           ),
