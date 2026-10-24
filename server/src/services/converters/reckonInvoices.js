@@ -29,7 +29,13 @@ const buildInvoiceLines = (doc) => {
     }
     if (noTaxCodes.includes(taxCode)) taxAmount = 0;
 
-    const qty = line.Quantity ?? line.Hours ?? line.Units ?? line.UnitCount ?? 1;
+    const qty =
+      line.Quantity > 0 ? line.Quantity :
+        line.Hours > 0 ? line.Hours :
+          line.Units > 0 ? line.Units :
+            line.ShipQuantity > 0 ? line.ShipQuantity :
+              line.UnitCount > 0 ? line.UnitCount :
+                1;
     const unitPrice = line.UnitPrice ?? line.Rate ?? (lineAmount / (qty || 1));
 
     out.push({
@@ -55,30 +61,30 @@ export const flattenReckonInvoice = (invoices) => {
   for (const inv of invoices) {
     for (const l of buildInvoiceLines(inv)) {
       rows.push({
-        "Invoice number":    inv.Number || "",
-        "Customer":          cleanNone(inv.Customer?.Name),
-        "Transaction date":  fmtDate(inv.Date),
-        "Due date":          fmtDate(inv.Terms?.DueDate || inv.PromisedDate),
-        "Customer PO No.":   inv.CustomerPurchaseOrderNumber || "",
-        "Amounts are":       inv.IsTaxInclusive ? "Tax inclusive" : "Tax exclusive",
-        "Freight":           inv?.Freight || "",
-        "FreightForeign":    inv.FreightForeign || "",
-        "FreightTaxCode":    inv?.FreightTaxCode?.Code,
-        "Item":              l.itemName,
-        "Discount":          l.DiscountPercent ?? "",
-        "Job Name":          l?.Job?.Name,
-        "Job Number":        l.Job?.Number,
-        "Description":       l.description,
-        "Account No.":       l.accountNo,
-        "No. of Unit":       l.qty,
-        "Unit Price":        l.unitPrice,
-        "Discount %":        "",
-        "Amount ($)":        l.lineAmount,
-        "Tax code":          l.taxCode,
-        "Tax amount ($)":    Number(l.taxAmount.toFixed(2)),
-        "Job No.":           l.jobNo,
-        "Job name":          l.jobName,
-        "UID":               inv?.UID
+        "Invoice number": inv.Number || "",
+        "Customer": cleanNone(inv.Customer?.Name),
+        "Transaction date": fmtDate(inv.Date),
+        "Due date": fmtDate(inv.Terms?.DueDate || inv.PromisedDate),
+        "Customer PO No.": inv.CustomerPurchaseOrderNumber || "",
+        "Amounts are": inv.IsTaxInclusive ? "Tax inclusive" : "Tax exclusive",
+        "Freight": inv?.Freight || "",
+        "FreightForeign": inv.FreightForeign || "",
+        "FreightTaxCode": inv?.FreightTaxCode?.Code,
+        "Item": l.itemName,
+        "Discount": l.DiscountPercent ?? "",
+        "Job Name": l?.Job?.Name,
+        "Job Number": l.Job?.Number,
+        "Description": l.description,
+        "Account No.": l.accountNo,
+        "No. of Unit": l.qty,
+        "Unit Price": l.unitPrice,
+        "Discount %": "",
+        "Amount ($)": l.lineAmount,
+        "Tax code": l.taxCode,
+        "Tax amount ($)": Number(l.taxAmount.toFixed(2)),
+        "Job No.": l.jobNo,
+        "Job name": l.jobName,
+        "UID": inv?.UID
       });
     }
   }
@@ -91,16 +97,16 @@ export const flattenMYOBCreditNote = (creditNotes) => {
     const lines = cn.Lines?.length ? cn.Lines : [{}];
     for (const line of lines) {
       rows.push({
-        "UID":                line.Sale?.UID || "",
-        "CreditFromInvoice":  cn.CreditFromInvoice?.Number || "",
-        "Customer":           cleanNone(cn.Customer?.Name || cn.Customer?.CompanyName || cn.Customer?.DisplayID),
-        "Number":             cn.Number || "",
-        "Date":               fmtDate(cn.Date),
-        "CreditAmount":       cn.Amount ?? cn.CreditAmount ?? "",
-        "Memo":               cn.Memo || "",
-        "Invoice Id":         line.Sale?.Number || line.Invoice?.Number || "",
-        "AmountApplied":      line.AmountApplied ?? "",
-        "ForeignCurrency":    cn.ForeignCurrency?.Code || "",
+        "UID": line.Sale?.UID || "",
+        "CreditFromInvoice": cn.CreditFromInvoice?.Number || "",
+        "Customer": cleanNone(cn.Customer?.Name || cn.Customer?.CompanyName || cn.Customer?.DisplayID),
+        "Number": cn.Number || "",
+        "Date": fmtDate(cn.Date),
+        "CreditAmount": cn.Amount ?? cn.CreditAmount ?? "",
+        "Memo": cn.Memo || "",
+        "Invoice Id": line.Sale?.Number || line.Invoice?.Number || "",
+        "AmountApplied": line.AmountApplied ?? "",
+        "ForeignCurrency": cn.ForeignCurrency?.Code || "",
       });
     }
   }
@@ -116,14 +122,14 @@ export const flattenReckonCustomerPayment = (payments) => {
     const invoices = p.Invoices?.length ? p.Invoices : [{}];
     for (const inv of invoices) {
       rows.push({
-        "Customer":                   cleanNone(p.Customer?.Name || p.Customer?.CompanyName),
-        "Reference number":           p.ReceiptNumber || "",
-        "Date":                       fmtDate(p.Date),
-        "Bank account":               p.Account?.DisplayID || "",
+        "Customer": cleanNone(p.Customer?.Name || p.Customer?.CompanyName),
+        "Reference number": p.ReceiptNumber || "",
+        "Date": fmtDate(p.Date),
+        "Bank account": p.Account?.DisplayID || "",
         "Description of transaction": p.Memo || "",
-        "Invoice number":             inv.Number || "",
-        "Amount received":            inv.AmountApplied ?? p.AmountReceived ?? "",
-        "UID" :                       inv?.UID,
+        "Invoice number": inv.Number || "",
+        "Amount received": inv.AmountApplied ?? p.AmountReceived ?? "",
+        "UID": inv?.UID,
       });
     }
   }
@@ -140,19 +146,19 @@ export const flattenReckonSpendMoney = (items) => {
       const lineAmount = Number(line.Amount ?? line.Total ?? txn.AmountPaid ?? 0);
       if (!lineAmount) continue;
       rows.push({
-        "Bank Account":                txn.Account?.DisplayID || "",
-        "Contact":                     cleanNone(txn.Contact?.Name || txn.Contact?.CompanyName || "No Name"),
-        "Description of transaction":  txn.Memo || "",
-        "Reference number":            txn.PaymentNumber || "",
-        "Date":                        fmtDate(txn.Date),
-        "Amounts are":                 txn.IsTaxInclusive ? "Tax inclusive" : "Tax exclusive",
-        "Account":                     line.Account?.DisplayID || "",
-        "Amount":                      lineAmount,
-        "Quantity":                    1,
-        "Description":                 line.Memo || "",
-        "Job":                         line.Job?.Name || "",
-        "Tax Code":                    line.TaxCode?.Code || "",
-        "UID":                         txn?.UID,
+        "Bank Account": txn.Account?.DisplayID || "",
+        "Contact": cleanNone(txn.Contact?.Name || txn.Contact?.CompanyName || "No Name"),
+        "Description of transaction": txn.Memo || "",
+        "Reference number": txn.PaymentNumber || "",
+        "Date": fmtDate(txn.Date),
+        "Amounts are": txn.IsTaxInclusive ? "Tax inclusive" : "Tax exclusive",
+        "Account": line.Account?.DisplayID || "",
+        "Amount": lineAmount,
+        "Quantity": 1,
+        "Description": line.Memo || "",
+        "Job": line.Job?.Name || "",
+        "Tax Code": line.TaxCode?.Code || "",
+        "UID": txn?.UID,
       });
     }
   }
@@ -169,19 +175,19 @@ export const flattenReckonReceiveMoney = (items) => {
       const lineAmount = Number(line.Amount ?? line.Total ?? txn.AmountReceived ?? 0);
       if (!lineAmount) continue;
       rows.push({
-        "Bank Account":       txn.Account?.DisplayID || "",
-        "Contact":            cleanNone(txn.Contact?.Name || txn.Contact?.CompanyName || "No Name"),
-        "Description":        txn.Memo || "",
-        "Reference number":   txn.ReceiptNumber || "",
-        "Date":               fmtDate(txn.Date),
-        "Amounts are":        txn.IsTaxInclusive ? "Tax inclusive" : "Tax exclusive",
-        "Account":            line.Account?.DisplayID || "",
-        "Amount":             lineAmount,
-        "Quantity":           1,
-        "Line_Description":   line.Memo || "",
-        "Job":                line.Job?.Name || "",
-        "Tax Code":           line.TaxCode?.Code || "",
-        "UID":                txn?.UID,
+        "Bank Account": txn.Account?.DisplayID || "",
+        "Contact": cleanNone(txn.Contact?.Name || txn.Contact?.CompanyName || "No Name"),
+        "Description": txn.Memo || "",
+        "Reference number": txn.ReceiptNumber || "",
+        "Date": fmtDate(txn.Date),
+        "Amounts are": txn.IsTaxInclusive ? "Tax inclusive" : "Tax exclusive",
+        "Account": line.Account?.DisplayID || "",
+        "Amount": lineAmount,
+        "Quantity": 1,
+        "Line_Description": line.Memo || "",
+        "Job": line.Job?.Name || "",
+        "Tax Code": line.TaxCode?.Code || "",
+        "UID": txn?.UID,
       });
     }
   }
@@ -194,12 +200,12 @@ export const flattenReckonBankTransfer = (items) =>
   items
     .filter((txn) => Number(txn.Amount ?? txn.TotalAmount ?? 0) !== 0)
     .map((txn) => ({
-      "Date":                        fmtDate(txn.Date),
-      "Reference number":            txn.Number || "",
-      "Amount":                      Number(txn.Amount ?? txn.TotalAmount ?? 0),
-      "Description of transaction":  txn.Memo || "",
-      "Bank account from":           txn.FromAccount?.DisplayID || "",
-      "Bank account to":             txn.ToAccount?.DisplayID || "",
+      "Date": fmtDate(txn.Date),
+      "Reference number": txn.Number || "",
+      "Amount": Number(txn.Amount ?? txn.TotalAmount ?? 0),
+      "Description of transaction": txn.Memo || "",
+      "Bank account from": txn.FromAccount?.DisplayID || "",
+      "Bank account to": txn.ToAccount?.DisplayID || "",
     }));
 
 // ── 7. General Journal → "Journals" sheet ─────────────────────────
