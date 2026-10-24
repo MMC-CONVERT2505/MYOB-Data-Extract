@@ -29,7 +29,7 @@ const buildInvoiceLines = (doc) => {
     }
     if (noTaxCodes.includes(taxCode)) taxAmount = 0;
 
-    const qty = line.Quantity ?? line.Hours ?? line.Units ?? 1;
+    const qty = line.Quantity ?? line.Hours ?? line.Units ?? line.UnitCount ?? 1;
     const unitPrice = line.UnitPrice ?? line.Rate ?? (lineAmount / (qty || 1));
 
     out.push({
